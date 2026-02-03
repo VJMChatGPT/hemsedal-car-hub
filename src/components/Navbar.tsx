@@ -37,13 +37,19 @@ const Navbar = () => {
               About Us
             </button>
             <button
+              onClick={() => scrollToSection("bookings")}
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
+              Reservas
+            </button>
+            <button
               onClick={() => scrollToSection("contact")}
               className="text-muted-foreground hover:text-foreground transition-colors font-medium"
             >
               Contact
             </button>
             <Button
-              onClick={() => scrollToSection("contact")}
+              onClick={() => scrollToSection("bookings")}
               className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
             >
               <Phone className="w-4 h-4 mr-2" />
@@ -77,13 +83,19 @@ const Navbar = () => {
                 About Us
               </button>
               <button
+                onClick={() => scrollToSection("bookings")}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
+              >
+                Reservas
+              </button>
+              <button
                 onClick={() => scrollToSection("contact")}
                 className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
               >
                 Contact
               </button>
               <Button
-                onClick={() => scrollToSection("contact")}
+                onClick={() => scrollToSection("bookings")}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold w-full"
               >
                 <Phone className="w-4 h-4 mr-2" />
