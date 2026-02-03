@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          contact: string
+          created_at: string | null
+          date: string
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          contact: string
+          created_at?: string | null
+          date: string
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          contact?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       bookings_test: {
         Row: {
           created_at: string
