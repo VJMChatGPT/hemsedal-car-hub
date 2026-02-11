@@ -64,6 +64,14 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+### Deploying to Vercel
+
+This repository is a **Vite + React** app (not Next.js). If Vercel reports `No Next.js version detected`, keep the project Root Directory pointed at the folder containing `package.json` and use the included `vercel.json` settings:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
