@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,49 +36,37 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields: name, contact, and date are required");
     }
 
-    // Send email using Resend API directly
-    // NOTA: Para usar un dominio propio en "from", debes verificar el dominio en Resend:
-    // https://resend.com/domains - Añade registros DNS para verificar tu dominio
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        // Usando onboarding@resend.dev que es válido sin verificar dominio
-        // Para dominio propio: "Hemsedal Motors <bookings@mi-dominio.com>"
-        from: `Hemsedal Motors <${FROM_EMAIL}>`,
-        to: [TO_EMAIL],
-        subject: `Nueva reserva de ${name}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #1a1a1a; border-bottom: 2px solid #d4a574; padding-bottom: 10px;">
-              Nueva Solicitud de Reserva
-            </h1>
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>👤 Nombre:</strong> ${name}</p>
-              <p><strong>📞 Contacto:</strong> ${contact}</p>
-              <p><strong>📅 Fecha:</strong> ${date}</p>
-              <p><strong>📝 Notas:</strong> ${notes || "Sin notas adicionales"}</p>
-            </div>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="color: #666; font-size: 12px;">
-              Este email fue enviado desde el formulario de reservas de Hemsedal Motors.
-            </p>
+    const resend = new Resend(RESEND_API_KEY);
+
+    const { data, error } = await resend.emails.send({
+      from: `Hemsedal Motors <${FROM_EMAIL}>`,
+      to: [TO_EMAIL],
+      subject: `Nueva reserva de ${name}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; border-bottom: 2px solid #d4a574; padding-bottom: 10px;">
+            Nueva Solicitud de Reserva
+          </h1>
+          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>👤 Nombre:</strong> ${name}</p>
+            <p><strong>📞 Contacto:</strong> ${contact}</p>
+            <p><strong>📅 Fecha:</strong> ${date}</p>
+            <p><strong>📝 Notas:</strong> ${notes || "Sin notas adicionales"}</p>
           </div>
-        `,
-      }),
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #666; font-size: 12px;">
+            Este email fue enviado desde el formulario de reservas de Hemsedal Motors.
+          </p>
+        </div>
+      `,
     });
 
-    const emailData = await emailResponse.json();
-
-    if (!emailResponse.ok) {
-      console.error("Resend API error:", emailData);
-      throw new Error(`Resend API error: ${JSON.stringify(emailData)}`);
+    if (error) {
+      console.error("Resend SDK error:", error);
+      throw new Error(`Resend SDK error: ${JSON.stringify(error)}`);
     }
 
-    console.log("Booking email sent successfully to:", TO_EMAIL, emailData);
+    console.log("Booking email sent successfully to:", TO_EMAIL, data);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
