@@ -13,6 +13,9 @@ interface BookingRequest {
   notes: string;
 }
 
+const TO_EMAIL = Deno.env.get("BOOKING_TO_EMAIL") ?? "marclopezclavero@gmail.com";
+const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "onboarding@resend.dev";
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -32,9 +35,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields: name, contact, and date are required");
     }
 
-    // Email recipient - hardcoded as requested
-    const recipientEmail = "marclopezclavero@gmail.com";
-
     // Send email using Resend API directly
     // NOTA: Para usar un dominio propio en "from", debes verificar el dominio en Resend:
     // https://resend.com/domains - Añade registros DNS para verificar tu dominio
@@ -46,9 +46,9 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         // Usando onboarding@resend.dev que es válido sin verificar dominio
-        // Para dominio propio: "Hemsedal Motors <noreply@tudominio.com>"
-        from: "Hemsedal Motors <onboarding@resend.dev>",
-        to: [recipientEmail],
+        // Para dominio propio: "Hemsedal Motors <bookings@mi-dominio.com>"
+        from: `Hemsedal Motors <${FROM_EMAIL}>`,
+        to: [TO_EMAIL],
         subject: `Nueva reserva de ${name}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -77,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Resend API error: ${JSON.stringify(emailData)}`);
     }
 
-    console.log("Booking email sent successfully to:", recipientEmail, emailData);
+    console.log("Booking email sent successfully to:", TO_EMAIL, emailData);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
