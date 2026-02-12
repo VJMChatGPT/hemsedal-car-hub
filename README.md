@@ -72,6 +72,21 @@ This repository is a **Vite + React** app (not Next.js). If Vercel reports `No N
 - Build command: `npm run build`
 - Output directory: `dist`
 
+### Supabase checklist (important for production)
+
+If bookings work locally but fail in production with `Error al guardar la reserva en la base de datos`, usually the production Supabase project is missing one of these steps:
+
+1. **Run migrations in the target Supabase project** so `public.bookings` exists.
+2. **Enable INSERT policy for anon/authenticated** on `public.bookings` (RLS).
+3. **Set Vercel environment variables**:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+4. **Deploy Edge Function + secrets** if using email notifications:
+   - `RESEND_API_KEY`
+   - `NOTIFICATION_EMAIL`
+
+Without these, client-side insertions can fail in cloud environments while still working locally.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
