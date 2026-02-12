@@ -22,6 +22,22 @@ const Bookings = () => {
     notes: "",
   });
 
+  const getBookingDbErrorMessage = (error: { code?: string; message?: string }) => {
+    if (error.code === "42501") {
+      return "No hay permisos para guardar reservas (RLS/policies). Verifica la política INSERT de la tabla bookings.";
+    }
+
+    if (error.code === "42P01") {
+      return "La tabla bookings no existe en este entorno. Ejecuta las migraciones de Supabase en producción.";
+    }
+
+    if (error.message?.toLowerCase().includes("row-level security")) {
+      return "La base de datos bloqueó la inserción por Row Level Security. Revisa las policies de bookings.";
+    }
+
+    return "Error al guardar la reserva en la base de datos";
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -59,7 +75,7 @@ const Bookings = () => {
 
       if (dbError) {
         console.error("Database insert error:", dbError);
-        throw new Error("Error al guardar la reserva en la base de datos");
+        throw new Error(getBookingDbErrorMessage(dbError));
       }
 
       // Step 2: Send email notification via Edge Function
