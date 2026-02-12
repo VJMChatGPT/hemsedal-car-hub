@@ -1,23 +1,3 @@
-import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import CarGrid from "@/components/CarGrid";
-import About from "@/components/About";
-import Bookings from "@/components/Bookings";
-import Contact from "@/components/Contact";
-import Footer from "@/components/Footer";
+import HomePage from "@/features/home/pages/HomePage";
 
-const Index = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <Hero />
-      <CarGrid />
-      <About />
-      <Bookings />
-      <Contact />
-      <Footer />
-    </div>
-  );
-};
-
-export default Index;
+export default HomePage;

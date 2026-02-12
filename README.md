@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
+# Hemsedal Car Hub
 
-## Project info
+Sitio web de **Hemsedal Motors** para mostrar flota premium, capturar reservas y gestionar contacto comercial.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- Vite + React 18 + TypeScript
+- Tailwind CSS + shadcn/ui
+- Supabase (tabla `bookings` + edge function `send-booking-email`)
+- Vitest + Testing Library
 
-There are several ways of editing your application.
+## Requisitos
 
-**Use Lovable**
+- Node.js 18+
+- npm 9+
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Instalación
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+npm install
+```
 
-**Use your preferred IDE**
+## Variables de entorno
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Crea un `.env` con:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+VITE_SUPABASE_URL=https://<tu-proyecto>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<tu-anon-key>
+```
 
-Follow these steps:
+> En tests se usan valores fallback para evitar dependencias remotas.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Ejecución
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Desarrollo
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Build de producción
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build
+```
 
-**Use GitHub Codespaces**
+### Preview local de build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+npm run preview
+```
 
-## What technologies are used for this project?
+## Calidad y validación
 
-This project is built with:
+```bash
+npm run lint
+npm run test
+npm run build
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Estructura del proyecto
 
-## How can I deploy this project?
+```text
+src/
+  app/                        # Providers y router principal
+  constants/                  # Config global (rutas, IDs de sección, datos de marca)
+  features/
+    home/
+      components/             # Componentes reutilizables del dominio home
+      data/                   # Datos estáticos (vehículos, ventajas)
+      hooks/                  # Hooks de estado de formularios
+      pages/                  # Composición de la home
+      sections/               # Secciones de UI por responsabilidad
+      services/               # Casos de uso externos (booking + edge function)
+      types/                  # Tipos del dominio home
+  integrations/supabase/      # Cliente y tipos de DB
+  pages/                      # Rutas de alto nivel (home + 404)
+  test/                       # Smoke tests y utilidades
+  utils/                      # Helpers puros (scroll/formato)
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Flujos principales
 
-## Can I connect a custom domain to my Lovable project?
+- **Landing y navegación:** header con scroll suave a secciones (`fleet`, `about`, `bookings`, `contact`).
+- **Reserva:** valida campos, guarda en Supabase (`bookings`) y luego intenta notificación por edge function.
+- **Contacto:** formulario local con feedback inmediato por toast.
+- **Catálogo:** render de tarjetas de vehículos desde fuente de datos tipada.
 
-Yes, you can!
+## Notas de despliegue
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Mantén configuradas las variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` en el entorno de deploy.
+- Ejecuta migraciones de Supabase en el proyecto de destino para asegurar existencia de `public.bookings`.
