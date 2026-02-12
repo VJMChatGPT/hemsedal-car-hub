@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Calendar as CalendarIcon, CheckCircle, FileText, Loader2, Phone, Send, User } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -25,11 +25,16 @@ const initialBookingValues: BookingFormValues = {
 export const BookingSection = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInFlightRef = useRef(false);
   const [isSuccessBannerVisible, setIsSuccessBannerVisible] = useState(false);
   const { values, onFieldChange, resetValues } = useFormFields(initialBookingValues);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (submissionInFlightRef.current) {
+      return;
+    }
 
     if (!selectedDate) {
       toast.error("Por favor selecciona una fecha");
@@ -42,6 +47,7 @@ export const BookingSection = () => {
     }
 
     setIsSubmitting(true);
+    submissionInFlightRef.current = true;
     setIsSuccessBannerVisible(false);
 
     try {
@@ -66,6 +72,7 @@ export const BookingSection = () => {
       toast.error(error instanceof Error ? error.message : "Error al enviar la reserva. Inténtalo de nuevo.");
     } finally {
       setIsSubmitting(false);
+      submissionInFlightRef.current = false;
     }
   };
 
