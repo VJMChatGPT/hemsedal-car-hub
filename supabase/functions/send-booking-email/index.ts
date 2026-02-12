@@ -15,7 +15,26 @@ interface BookingRequest {
 }
 
 const TO_EMAIL = Deno.env.get("BOOKING_TO_EMAIL") ?? "marclopezclavero@gmail.com";
-const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "onboarding@resend.dev";
+const DEFAULT_FROM_EMAIL = "reservas@oldiat.resend.app";
+
+function resolveFromEmail(rawFromEmail: string | undefined): string {
+  const configuredFromEmail = rawFromEmail?.trim();
+
+  if (!configuredFromEmail) {
+    return DEFAULT_FROM_EMAIL;
+  }
+
+  if (configuredFromEmail.toLowerCase().endsWith("@resend.dev")) {
+    console.warn(
+      `BOOKING_FROM_EMAIL (${configuredFromEmail}) uses Resend's testing domain and is not valid for production recipients. Falling back to ${DEFAULT_FROM_EMAIL}.`
+    );
+    return DEFAULT_FROM_EMAIL;
+  }
+
+  return configuredFromEmail;
+}
+
+const FROM_EMAIL = resolveFromEmail(Deno.env.get("BOOKING_FROM_EMAIL"));
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

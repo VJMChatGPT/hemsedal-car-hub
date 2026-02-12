@@ -141,3 +141,27 @@ Si el guardado en `bookings` falla en producción o queda inconsistente, valida 
    - Logs con prefijo `[supabase]` para validar inicialización y entorno.
    - Logs con prefijo `[booking]` para `insert:start`, `insert:error`, `insert:success`, `email:start`, `email:result`.
    - Incluye `traceId` para correlacionar cada intento en consola y logs de red.
+
+## Troubleshooting de Resend (403 validation_error)
+
+Si ves este error:
+
+```json
+{
+  "name": "validation_error",
+  "message": "You can only send testing emails to your own email address ..."
+}
+```
+
+significa que el remitente (`from`) está usando el dominio de pruebas `@resend.dev`.
+
+Para corregirlo en esta app:
+
+1. Configura en la función `send-booking-email`:
+   - `BOOKING_FROM_EMAIL=reservas@oldiat.resend.app` (o cualquier `@oldiat.resend.app`)
+   - `BOOKING_TO_EMAIL=<correo donde quieres recibir reservas>`
+   - `RESEND_API_KEY=<tu api key>`
+2. Verifica en Resend que el dominio `oldiat.resend.app` está habilitado para tu cuenta/proyecto.
+3. Vuelve a desplegar la edge function.
+
+Nota: la función ya incluye un fallback defensivo para evitar `@resend.dev` en producción y usar `reservas@oldiat.resend.app`.
