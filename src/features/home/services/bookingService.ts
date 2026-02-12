@@ -20,6 +20,10 @@ const sanitizeBookingPayload = (booking: BookingFormValues, selectedDate: Date) 
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const logDiagnostic = (event: string, details: Record<string, unknown>) => {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
   console.info(`[booking] ${event}`, details);
 };
 
@@ -43,22 +47,14 @@ export const saveBooking = async (booking: BookingFormValues, selectedDate: Date
   const traceId = createTraceId();
   const payload = sanitizeBookingPayload(booking, selectedDate);
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
   logDiagnostic("insert:start", {
     traceId,
-    isAuthenticated: Boolean(session?.user?.id),
-    userId: session?.user?.id ?? null,
     payload,
   });
 
-  const { data, error, status, statusText } = await supabase
+  const { error, status, statusText } = await supabase
     .from("bookings")
-    .insert(payload)
-    .select("id, created_at")
-    .single();
+    .insert(payload);
 
   if (error) {
     logDiagnostic("insert:error", {
@@ -76,8 +72,8 @@ export const saveBooking = async (booking: BookingFormValues, selectedDate: Date
 
   logDiagnostic("insert:success", {
     traceId,
-    insertedId: data.id,
-    createdAt: data.created_at,
+    status,
+    statusText,
   });
 };
 
