@@ -3,7 +3,27 @@ import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { BookingFormValues } from "@/features/home/types/home";
 
-const getBookingInsertErrorMessage = (error: { code?: string; message?: string }) => {
+type SupabaseErrorShape = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+const sanitizeBookingPayload = (booking: BookingFormValues, selectedDate: Date) => ({
+  name: booking.name.trim(),
+  contact: booking.contact.trim(),
+  date: selectedDate.toISOString(),
+  notes: booking.notes.trim() || null,
+});
+
+const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const logDiagnostic = (event: string, details: Record<string, unknown>) => {
+  console.info(`[booking] ${event}`, details);
+};
+
+const getBookingInsertErrorMessage = (error: SupabaseErrorShape) => {
   if (error.code === "42501") {
     return "No hay permisos para guardar reservas (RLS/policies). Verifica la política INSERT de la tabla bookings.";
   }
@@ -20,22 +40,60 @@ const getBookingInsertErrorMessage = (error: { code?: string; message?: string }
 };
 
 export const saveBooking = async (booking: BookingFormValues, selectedDate: Date) => {
-  const { error } = await supabase.from("bookings").insert({
-    name: booking.name.trim(),
-    contact: booking.contact.trim(),
-    date: selectedDate.toISOString(),
-    notes: booking.notes.trim() || null,
+  const traceId = createTraceId();
+  const payload = sanitizeBookingPayload(booking, selectedDate);
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  logDiagnostic("insert:start", {
+    traceId,
+    isAuthenticated: Boolean(session?.user?.id),
+    userId: session?.user?.id ?? null,
+    payload,
   });
 
+  const { data, error, status, statusText } = await supabase
+    .from("bookings")
+    .insert(payload)
+    .select("id, created_at")
+    .single();
+
   if (error) {
+    logDiagnostic("insert:error", {
+      traceId,
+      status,
+      statusText,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
     throw new Error(getBookingInsertErrorMessage(error));
   }
+
+  logDiagnostic("insert:success", {
+    traceId,
+    insertedId: data.id,
+    createdAt: data.created_at,
+  });
 };
 
 export const sendBookingNotification = async (booking: BookingFormValues, selectedDate: Date) => {
   const formattedDate = format(selectedDate, "PPP", { locale: es });
 
-  return supabase.functions.invoke("send-booking-email", {
+  logDiagnostic("email:start", {
+    payload: {
+      name: booking.name.trim(),
+      contact: booking.contact.trim(),
+      date: formattedDate,
+      hasNotes: Boolean(booking.notes.trim()),
+    },
+  });
+
+  const response = await supabase.functions.invoke("send-booking-email", {
     body: {
       name: booking.name.trim(),
       contact: booking.contact.trim(),
@@ -43,4 +101,12 @@ export const sendBookingNotification = async (booking: BookingFormValues, select
       notes: booking.notes.trim(),
     },
   });
+
+  logDiagnostic("email:result", {
+    hasError: Boolean(response.error),
+    data: response.data,
+    error: response.error?.message,
+  });
+
+  return response;
 };
