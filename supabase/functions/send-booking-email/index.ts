@@ -15,7 +15,7 @@ interface BookingRequest {
 }
 
 const TO_EMAIL = Deno.env.get("BOOKING_TO_EMAIL") ?? "marclopezclavero@gmail.com";
-const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "onboarding@resend.dev";
+const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "reservas@oldiat.resend.app";
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
