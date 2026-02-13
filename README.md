@@ -87,6 +87,28 @@ src/
 - **Contacto:** formulario local con feedback inmediato por toast.
 - **Catálogo:** render de tarjetas de vehículos desde fuente de datos tipada.
 
+
+## Diagnóstico rápido de Supabase (cuando “no funciona”)
+
+Si en el dashboard ves una función (por ejemplo `send-booking-email`) pero la app sigue fallando, lo más común es que **frontend y CLI estén apuntando a proyectos distintos**.
+
+Ejecuta:
+
+```bash
+npm run supabase:preflight
+```
+
+Este chequeo valida:
+- `VITE_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` (proyecto usado por frontend)
+- `supabase/config.toml -> project_id` (proyecto usado por Supabase CLI)
+- funciones edge presentes en `supabase/functions`
+- cantidad de migraciones SQL en el repo
+
+Si aparece algo como:
+- `frontend apunta a 'xxxx' pero Supabase CLI config apunta a 'yyyy'`
+
+entonces estás desplegando o consultando recursos en proyectos diferentes, y eso explica por qué “sí existe” en dashboard pero no responde desde la app.
+
 ## Notas de despliegue
 
 - Mantén configuradas las variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` en el entorno de deploy.
