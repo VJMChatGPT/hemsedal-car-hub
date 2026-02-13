@@ -17,6 +17,22 @@ interface SaveBookingParams {
   totalPrice: number;
 }
 
+const saveReservationMirror = async ({ booking, startDate, endDate }: SaveBookingParams) => {
+  const { error } = await supabase.from("reservations").insert({
+    customer_name: booking.name.trim(),
+    customer_email: booking.contact.trim(),
+    customer_phone: null,
+    start_date: startDate.toISOString().slice(0, 10),
+    end_date: endDate.toISOString().slice(0, 10),
+    status: "pending",
+    notes: booking.notes.trim() || null,
+  });
+
+  if (error && import.meta.env.DEV) {
+    console.warn("[booking] reservation mirror insert failed", error);
+  }
+};
+
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const logDiagnostic = (event: string, details: Record<string, unknown>) => {
@@ -144,4 +160,6 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     status,
     statusText,
   });
+
+  await saveReservationMirror({ booking, selectedCar, startDate, endDate, totalPrice });
 };
