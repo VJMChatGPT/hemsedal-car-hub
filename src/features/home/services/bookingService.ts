@@ -1,7 +1,6 @@
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { BookingFormValues } from "@/features/home/types/home";
+import { VEHICLES } from "@/features/home/data/vehicles";
+import { BookingFormValues, Vehicle } from "@/features/home/types/home";
 
 type SupabaseErrorShape = {
   code?: string;
@@ -10,12 +9,20 @@ type SupabaseErrorShape = {
   hint?: string;
 };
 
-const sanitizeBookingPayload = (booking: BookingFormValues, selectedDate: Date) => ({
-  name: booking.name.trim(),
-  contact: booking.contact.trim(),
-  date: selectedDate.toISOString(),
-  notes: booking.notes.trim() || null,
-});
+interface SaveBookingParams {
+  booking: BookingFormValues;
+  selectedCar: Vehicle;
+  startDate: Date;
+  endDate: Date;
+  totalPrice: number;
+}
+
+interface SendBookingNotificationParams {
+  booking: BookingFormValues;
+  selectedCar: Vehicle;
+  bookingSummary: string;
+  totalPrice: number;
+}
 
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -43,18 +50,39 @@ const getBookingInsertErrorMessage = (error: SupabaseErrorShape) => {
   return "Error al guardar la reserva en la base de datos";
 };
 
-export const saveBooking = async (booking: BookingFormValues, selectedDate: Date) => {
-  const traceId = createTraceId();
-  const payload = sanitizeBookingPayload(booking, selectedDate);
-
-  logDiagnostic("insert:start", {
-    traceId,
-    payload,
+export const getAvailableCars = async (startDate: Date, endDate: Date) => {
+  const { data, error } = await supabase.rpc("get_unavailable_car_ids", {
+    p_start_date: startDate.toISOString(),
+    p_end_date: endDate.toISOString(),
   });
 
-  const { error, status, statusText } = await supabase
-    .from("bookings")
-    .insert(payload);
+  if (error) {
+    throw new Error("No se pudo consultar disponibilidad de vehículos");
+  }
+
+  const unavailable = new Set((data ?? []).map((entry: { car_id: number }) => entry.car_id));
+
+  return VEHICLES
+    .filter((vehicle) => vehicle.isAvailable && !unavailable.has(vehicle.id))
+    .sort((a, b) => a.dailyRentPrice - b.dailyRentPrice);
+};
+
+export const saveBooking = async ({ booking, selectedCar, startDate, endDate, totalPrice }: SaveBookingParams) => {
+  const traceId = createTraceId();
+  const payload = {
+    name: booking.name.trim(),
+    contact: booking.contact.trim(),
+    notes: booking.notes.trim() || null,
+    date: startDate.toISOString(),
+    start_date: startDate.toISOString(),
+    end_date: endDate.toISOString(),
+    car_id: selectedCar.id,
+    price_total: totalPrice,
+  };
+
+  logDiagnostic("insert:start", { traceId, payload });
+
+  const { error, status, statusText } = await supabase.from("bookings").insert(payload);
 
   if (error) {
     logDiagnostic("insert:error", {
@@ -77,24 +105,20 @@ export const saveBooking = async (booking: BookingFormValues, selectedDate: Date
   });
 };
 
-export const sendBookingNotification = async (booking: BookingFormValues, selectedDate: Date) => {
-  const formattedDate = format(selectedDate, "PPP", { locale: es });
-
-  logDiagnostic("email:start", {
-    payload: {
-      name: booking.name.trim(),
-      contact: booking.contact.trim(),
-      date: formattedDate,
-      hasNotes: Boolean(booking.notes.trim()),
-    },
-  });
-
+export const sendBookingNotification = async ({
+  booking,
+  selectedCar,
+  bookingSummary,
+  totalPrice,
+}: SendBookingNotificationParams) => {
   const response = await supabase.functions.invoke("send-booking-email", {
     body: {
       name: booking.name.trim(),
       contact: booking.contact.trim(),
-      date: formattedDate,
+      date: bookingSummary,
       notes: booking.notes.trim(),
+      car: selectedCar.name,
+      totalPrice,
     },
   });
 
