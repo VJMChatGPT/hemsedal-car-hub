@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,11 +11,28 @@ interface BookingRequest {
   contact: string;
   date: string;
   notes: string;
+  email?: string;
 }
 
-const TO_EMAIL = Deno.env.get("BOOKING_TO_EMAIL") ?? "marclopezclavero@gmail.com";
-const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "reservas@oldiat.resend.app";
+const BOOKING_NOTIFY_TO = Deno.env.get("BOOKING_NOTIFY_TO") ?? "marclopezclavero@gmail.com";
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Dal Motorer <reservas@dalmotorer.com>";
 const SITE_NAME = "Dal Motorer";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function resolveReplyTo(email?: string, contact?: string): string | undefined {
+  const normalizedEmail = email?.trim();
+  if (normalizedEmail && EMAIL_PATTERN.test(normalizedEmail)) {
+    return normalizedEmail;
+  }
+
+  const normalizedContact = contact?.trim();
+  if (normalizedContact && EMAIL_PATTERN.test(normalizedContact)) {
+    return normalizedContact;
+  }
+
+  return undefined;
+}
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -25,23 +41,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    const { name, contact, date, notes }: BookingRequest = await req.json();
+    const { name, contact, date, notes, email }: BookingRequest = await req.json();
 
     // Validate required fields
     if (!name || !contact || !date) {
       throw new Error("Missing required fields: name, contact, and date are required");
     }
 
-    const resend = new Resend(RESEND_API_KEY);
-
-    const { data, error } = await resend.emails.send({
-      from: `${SITE_NAME} <${FROM_EMAIL}>`,
-      to: [TO_EMAIL],
+    const payload: Record<string, unknown> = {
+      from: RESEND_FROM,
+      to: [BOOKING_NOTIFY_TO],
       subject: `Nueva reserva de ${name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -60,14 +74,33 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
         </div>
       `,
-    });
+    };
 
-    if (error) {
-      console.error("Resend SDK error:", error);
-      throw new Error(`Resend SDK error: ${JSON.stringify(error)}`);
+    const replyTo = resolveReplyTo(email, contact);
+    if (replyTo) {
+      payload.reply_to = replyTo;
     }
 
-    console.log("Booking email sent successfully to:", TO_EMAIL, data);
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resendResponse.ok) {
+      const responseBody = await resendResponse.text();
+      console.error("Resend API error", {
+        status: resendResponse.status,
+        body: responseBody,
+      });
+      throw new Error(`Resend API request failed with status ${resendResponse.status}`);
+    }
+
+    const data = await resendResponse.json();
+    console.log("Booking email sent successfully to:", BOOKING_NOTIFY_TO, data);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
