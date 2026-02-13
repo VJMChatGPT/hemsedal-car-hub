@@ -3,11 +3,16 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  eachDayOfInterval,
+  endOfDay,
   endOfMonth,
   endOfWeek,
   format,
+  isSameDay,
+  isSameMonth,
   isWithinInterval,
   parseISO,
+  startOfDay,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -86,7 +91,7 @@ const AdminDashboardPage = () => {
   );
 
   const calendarRange = useMemo(() => {
-    if (view === "day") return { start: focusDate, end: focusDate };
+    if (view === "day") return { start: startOfDay(focusDate), end: endOfDay(focusDate) };
     if (view === "week") return { start: startOfWeek(focusDate), end: endOfWeek(focusDate) };
     return { start: startOfMonth(focusDate), end: endOfMonth(focusDate) };
   }, [view, focusDate]);
@@ -94,8 +99,31 @@ const AdminDashboardPage = () => {
   const calendarReservations = filteredReservations.filter((reservation) => {
     const start = parseISO(reservation.date);
     const end = parseISO(reservation.end_date ?? reservation.date);
-    return isWithinInterval(start, calendarRange) || isWithinInterval(end, calendarRange);
+    return (
+      isWithinInterval(start, calendarRange) ||
+      isWithinInterval(end, calendarRange) ||
+      isWithinInterval(calendarRange.start, { start, end })
+    );
   });
+
+  const monthDays = useMemo(() => {
+    if (view !== "month") return [];
+    const start = startOfWeek(startOfMonth(focusDate));
+    const end = endOfWeek(endOfMonth(focusDate));
+    return eachDayOfInterval({ start, end });
+  }, [focusDate, view]);
+
+  const getReservationInterval = (reservation: AdminBooking) => {
+    const start = parseISO(reservation.date);
+    const end = parseISO(reservation.end_date ?? reservation.date);
+    return { start: startOfDay(start), end: endOfDay(end) };
+  };
+
+  const getRangeLabel = () => {
+    if (view === "month") return format(focusDate, "LLLL yyyy");
+    if (view === "week") return `${format(calendarRange.start, "PPP")} - ${format(calendarRange.end, "PPP")}`;
+    return format(focusDate, "PPP");
+  };
 
   const movePeriod = (direction: 1 | -1) => {
     if (view === "day") setFocusDate(addDays(focusDate, direction));
@@ -103,8 +131,31 @@ const AdminDashboardPage = () => {
     if (view === "month") setFocusDate(direction > 0 ? addMonths(focusDate, 1) : subMonths(focusDate, 1));
   };
 
-  const updateReservation = async (id: string, patch: Partial<AdminBooking>) => {
-    const { error } = await supabase.from("bookings").update(patch).eq("id", id);
+  const updateReservation = async (reservation: AdminBooking, patch: Partial<AdminBooking>) => {
+    if (reservation.sourceTable === "reservations") {
+      const reservationId = reservation.id.replace("reservation-", "");
+      const mirroredPatch = {
+        customer_name: patch.name,
+        customer_email: patch.contact,
+        start_date: patch.date,
+        end_date: patch.end_date,
+        car_id: patch.car_id,
+        status: patch.status,
+        notes: patch.notes,
+      };
+
+      const { error } = await supabase.from("reservations").update(mirroredPatch).eq("id", reservationId);
+      if (error) {
+        toast.error("No se pudo guardar la reserva", { description: error.message });
+        return;
+      }
+
+      toast.success("Reserva actualizada");
+      await load();
+      return;
+    }
+
+    const { error } = await supabase.from("bookings").update(patch).eq("id", reservation.id);
     if (error) {
       toast.error("No se pudo guardar la reserva", { description: error.message });
       return;
@@ -203,7 +254,7 @@ const AdminDashboardPage = () => {
                   <Button variant="outline" onClick={() => movePeriod(-1)}>
                     ←
                   </Button>
-                  <p className="font-medium capitalize">{format(focusDate, view === "month" ? "LLLL yyyy" : "PPP")}</p>
+                  <p className="font-medium capitalize">{getRangeLabel()}</p>
                   <Button variant="outline" onClick={() => movePeriod(1)}>
                     →
                   </Button>
@@ -219,25 +270,60 @@ const AdminDashboardPage = () => {
                   </SelectContent>
                 </Select>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {calendarReservations.map((reservation) => (
-                  <button
-                    key={reservation.id}
-                    type="button"
-                    className="w-full rounded-lg border bg-white p-3 text-left hover:bg-slate-50"
-                    onClick={() => setSelectedReservation(reservation)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">
-                        {reservation.name} – {reservation.car?.name ?? "Sin coche"}
+              <CardContent className="space-y-3">
+                {view === "month" && (
+                  <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
+                    {monthDays.map((day) => {
+                      const dayReservations = calendarReservations.filter((reservation) =>
+                        isWithinInterval(day, getReservationInterval(reservation)),
+                      );
+
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={`min-h-28 rounded-lg border p-2 ${isSameMonth(day, focusDate) ? "bg-white" : "bg-slate-100"}`}
+                        >
+                          <p className={`mb-1 text-xs font-medium ${isSameDay(day, new Date()) ? "text-primary" : "text-muted-foreground"}`}>
+                            {format(day, "d")}
+                          </p>
+                          <div className="space-y-1">
+                            {dayReservations.slice(0, 2).map((reservation) => (
+                              <button
+                                key={`${reservation.id}-${day.toISOString()}`}
+                                type="button"
+                                className="w-full truncate rounded bg-slate-100 px-2 py-1 text-left text-xs text-foreground hover:bg-slate-200"
+                                onClick={() => setSelectedReservation(reservation)}
+                              >
+                                {reservation.name}
+                              </button>
+                            ))}
+                            {dayReservations.length > 2 && <p className="text-[11px]">+{dayReservations.length - 2} más</p>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {view !== "month" &&
+                  calendarReservations.map((reservation) => (
+                    <button
+                      key={reservation.id}
+                      type="button"
+                      className="w-full rounded-lg border bg-white p-3 text-left hover:bg-slate-50"
+                      onClick={() => setSelectedReservation(reservation)}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">
+                          {reservation.name} – {reservation.car?.name ?? "Sin coche"}
+                        </p>
+                        <BadgeStatus status={reservation.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
                       </p>
-                      <BadgeStatus status={reservation.status} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
-                    </p>
-                  </button>
-                ))}
+                    </button>
+                  ))}
                 {!loading && calendarReservations.length === 0 && <p className="text-sm text-muted-foreground">No hay reservas en este rango.</p>}
               </CardContent>
             </Card>
@@ -272,10 +358,10 @@ const AdminDashboardPage = () => {
                         </td>
                         <td>{reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : "-"}</td>
                         <td className="space-x-1 p-3">
-                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation.id, { status: "accepted" })}>
+                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "accepted" })}>
                             Aceptar
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation.id, { status: "rejected" })}>
+                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "rejected" })}>
                             Denegar
                           </Button>
                           <Button size="sm" onClick={() => setSelectedReservation(reservation)}>
@@ -418,18 +504,18 @@ const AdminDashboardPage = () => {
             />
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={() => updateReservation(selectedReservation.id, { status: "accepted" })}>
+              <Button variant="outline" onClick={() => updateReservation(selectedReservation, { status: "accepted" })}>
                 Aceptar
               </Button>
-              <Button variant="outline" onClick={() => updateReservation(selectedReservation.id, { status: "rejected" })}>
+              <Button variant="outline" onClick={() => updateReservation(selectedReservation, { status: "rejected" })}>
                 Denegar
               </Button>
-              <Button variant="outline" onClick={() => updateReservation(selectedReservation.id, { status: "cancelled" })}>
+              <Button variant="outline" onClick={() => updateReservation(selectedReservation, { status: "cancelled" })}>
                 Cancelar
               </Button>
               <Button
                 onClick={() =>
-                  updateReservation(selectedReservation.id, {
+                  updateReservation(selectedReservation, {
                     name: selectedReservation.name,
                     contact: selectedReservation.contact,
                     date: selectedReservation.date,
