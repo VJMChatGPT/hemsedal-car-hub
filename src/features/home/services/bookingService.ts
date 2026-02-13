@@ -50,6 +50,15 @@ const getBookingInsertErrorMessage = (error: SupabaseErrorShape) => {
   return "Error al guardar la reserva en la base de datos";
 };
 
+const isLegacySchemaError = (error: SupabaseErrorShape) => {
+  if (error.code === "42703") {
+    return true;
+  }
+
+  const message = error.message?.toLowerCase() ?? "";
+  return message.includes("start_date") || message.includes("end_date") || message.includes("price_total");
+};
+
 export const getAvailableCars = async (startDate: Date, endDate: Date) => {
   const { data, error } = await supabase.rpc("get_unavailable_car_ids", {
     p_start_date: startDate.toISOString(),
@@ -85,6 +94,45 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
   const { error, status, statusText } = await supabase.from("bookings").insert(payload);
 
   if (error) {
+    if (isLegacySchemaError(error)) {
+      logDiagnostic("insert:legacy-schema:fallback", {
+        traceId,
+        code: error.code,
+        message: error.message,
+      });
+
+      const legacyPayload = {
+        name: booking.name.trim(),
+        contact: booking.contact.trim(),
+        notes: booking.notes.trim() || null,
+        date: startDate.toISOString(),
+      };
+
+      const legacyResult = await supabase.from("bookings").insert(legacyPayload);
+
+      if (!legacyResult.error) {
+        logDiagnostic("insert:legacy-schema:success", {
+          traceId,
+          status: legacyResult.status,
+          statusText: legacyResult.statusText,
+        });
+
+        return;
+      }
+
+      logDiagnostic("insert:legacy-schema:error", {
+        traceId,
+        status: legacyResult.status,
+        statusText: legacyResult.statusText,
+        code: legacyResult.error.code,
+        message: legacyResult.error.message,
+        details: legacyResult.error.details,
+        hint: legacyResult.error.hint,
+      });
+
+      throw new Error(getBookingInsertErrorMessage(legacyResult.error));
+    }
+
     logDiagnostic("insert:error", {
       traceId,
       status,
