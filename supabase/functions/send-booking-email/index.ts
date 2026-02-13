@@ -20,6 +20,10 @@ const SITE_NAME = "Dal Motorer";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function isResendSandboxSender(fromAddress: string): boolean {
+  return /@resend\.dev>?$/i.test(fromAddress.trim());
+}
+
 function resolveReplyTo(email?: string, contact?: string): string | undefined {
   const normalizedEmail = email?.trim();
   if (normalizedEmail && EMAIL_PATTERN.test(normalizedEmail)) {
@@ -44,6 +48,12 @@ const handler = async (req: Request): Promise<Response> => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    if (isResendSandboxSender(RESEND_FROM)) {
+      throw new Error(
+        "RESEND_FROM is using resend.dev sandbox sender. Set RESEND_FROM to an address on your verified domain (for example reservas@dalmotorer.com)."
+      );
     }
 
     const { name, contact, date, notes, email }: BookingRequest = await req.json();
@@ -96,7 +106,18 @@ const handler = async (req: Request): Promise<Response> => {
         status: resendResponse.status,
         body: responseBody,
       });
-      throw new Error(`Resend API request failed with status ${resendResponse.status}`);
+
+      const parsedError = (() => {
+        try {
+          const json = JSON.parse(responseBody) as { message?: string };
+          return json.message;
+        } catch {
+          return undefined;
+        }
+      })();
+
+      const reason = parsedError ?? responseBody;
+      throw new Error(`Resend API request failed with status ${resendResponse.status}: ${reason}`);
     }
 
     const data = await resendResponse.json();
