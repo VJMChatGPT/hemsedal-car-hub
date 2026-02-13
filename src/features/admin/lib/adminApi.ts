@@ -25,17 +25,47 @@ export interface AdminCar {
   created_at: string;
 }
 
+const isMissingTableError = (code?: string) => code === "42P01";
+const isPermissionDeniedError = (code?: string) => code === "42501";
+const isMissingRelationError = (code?: string) => code === "PGRST200";
+
+const fetchBookingsWithFallback = async () => {
+  const result = await supabase.from("bookings").select("*, car:cars(name)").order("date", { ascending: true });
+  if (!result.error) return result;
+
+  if (isMissingRelationError(result.error.code)) {
+    return supabase.from("bookings").select("*").order("date", { ascending: true });
+  }
+
+  return result;
+};
+
+const fetchReservationsWithFallback = async () => {
+  const result = await supabase.from("reservations").select("*, car:cars(name)").order("start_date", { ascending: true });
+  if (!result.error) return result;
+
+  if (isMissingRelationError(result.error.code)) {
+    return supabase.from("reservations").select("*").order("start_date", { ascending: true });
+  }
+
+  return result;
+};
+
 export const fetchBookings = async () => {
   const [bookingsResult, reservationsResult] = await Promise.all([
-    supabase.from("bookings").select("*, car:cars(name)").order("date", { ascending: true }),
-    supabase.from("reservations").select("*, car:cars(name)").order("start_date", { ascending: true }),
+    fetchBookingsWithFallback(),
+    fetchReservationsWithFallback(),
   ]);
 
-  if (bookingsResult.error && bookingsResult.error.code !== "42P01") {
+  if (bookingsResult.error && !isMissingTableError(bookingsResult.error.code)) {
     throw bookingsResult.error;
   }
 
-  if (reservationsResult.error && reservationsResult.error.code !== "42P01") {
+  if (
+    reservationsResult.error &&
+    !isMissingTableError(reservationsResult.error.code) &&
+    !isPermissionDeniedError(reservationsResult.error.code)
+  ) {
     throw reservationsResult.error;
   }
 
