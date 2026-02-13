@@ -24,5 +24,7 @@ export const SECTION_IDS = {
 
 export const APP_ROUTES = {
   home: "/",
+  adminLogin: "/admin/login",
+  admin: "/admin",
   fallback: "*",
 } as const;
