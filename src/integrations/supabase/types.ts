@@ -16,28 +16,40 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          car_id: number | null
           contact: string
           created_at: string | null
           date: string
+          end_date: string | null
           id: string
           name: string
           notes: string | null
+          price_total: number | null
+          start_date: string | null
         }
         Insert: {
+          car_id?: number | null
           contact: string
           created_at?: string | null
           date: string
+          end_date?: string | null
           id?: string
           name: string
           notes?: string | null
+          price_total?: number | null
+          start_date?: string | null
         }
         Update: {
+          car_id?: number | null
           contact?: string
           created_at?: string | null
           date?: string
+          end_date?: string | null
           id?: string
           name?: string
           notes?: string | null
+          price_total?: number | null
+          start_date?: string | null
         }
         Relationships: []
       }
@@ -64,7 +76,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_unavailable_car_ids: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: { car_id: number }[]
+      }
     }
     Enums: {
       [_ in never]: never
