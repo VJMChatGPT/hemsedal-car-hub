@@ -14,6 +14,15 @@ interface BookingRequest {
   email?: string;
 }
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status = 500) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const BOOKING_NOTIFY_TO = Deno.env.get("BOOKING_NOTIFY_TO")
   ?? Deno.env.get("BOOKING_TO_EMAIL")
   ?? "marclopezclavero@gmail.com";
@@ -22,6 +31,7 @@ const RESEND_FROM = Deno.env.get("RESEND_FROM")
   ?? Deno.env.get("BOOKING_FROM_EMAIL")
   ?? "Dal Motorer <reservas@dalmotorer.com>";
 const SITE_NAME = "Dal Motorer";
+const RESEND_DOMAIN_SETUP_HINT = "Resend bloqueó el envío porque el dominio del remitente no está verificado. Verifica tu dominio en resend.com/domains y configura RESEND_FROM con una cuenta de ese dominio (ejemplo: Dal Motorer <reservas@tudominio.com>).";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -130,15 +140,20 @@ const handler = async (req: Request): Promise<Response> => {
 
       const parsedError = (() => {
         try {
-          const json = JSON.parse(responseBody) as { message?: string };
-          return json.message;
+          return JSON.parse(responseBody) as { name?: string; message?: string };
         } catch {
           return undefined;
         }
       })();
 
-      const reason = parsedError ?? responseBody;
-      throw new Error(`Resend API request failed with status ${resendResponse.status}: ${reason}`);
+      const isDomainValidationError = parsedError?.name === "validation_error"
+        && parsedError?.message?.includes("verify a domain");
+
+      const reason = isDomainValidationError
+        ? `${RESEND_DOMAIN_SETUP_HINT} Resend: ${parsedError?.message}`
+        : (parsedError?.message ?? responseBody);
+
+      throw new HttpError(`Resend API request failed with status ${resendResponse.status}: ${reason}`, resendResponse.status);
     }
 
     const data = await resendResponse.json();
@@ -154,10 +169,11 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: unknown) {
     console.error("Error in send-booking-email function:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStatus = error instanceof HttpError ? error.status : 500;
     return new Response(
       JSON.stringify({ ok: false, error: errorMessage }),
       {
-        status: 500,
+        status: errorStatus,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
