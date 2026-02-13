@@ -17,13 +17,6 @@ interface SaveBookingParams {
   totalPrice: number;
 }
 
-interface SendBookingNotificationParams {
-  booking: BookingFormValues;
-  selectedCar: Vehicle;
-  bookingSummary: string;
-  totalPrice: number;
-}
-
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const logDiagnostic = (event: string, details: Record<string, unknown>) => {
@@ -151,30 +144,4 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     status,
     statusText,
   });
-};
-
-export const sendBookingNotification = async ({
-  booking,
-  selectedCar,
-  bookingSummary,
-  totalPrice,
-}: SendBookingNotificationParams) => {
-  const response = await supabase.functions.invoke("send-booking-email", {
-    body: {
-      name: booking.name.trim(),
-      contact: booking.contact.trim(),
-      date: bookingSummary,
-      notes: booking.notes.trim(),
-      car: selectedCar.name,
-      totalPrice,
-    },
-  });
-
-  logDiagnostic("email:result", {
-    hasError: Boolean(response.error),
-    data: response.data,
-    error: response.error?.message,
-  });
-
-  return response;
 };

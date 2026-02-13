@@ -6,7 +6,7 @@ Sitio web de **Dal Motorer** para mostrar flota premium, capturar reservas y ges
 
 - Vite + React 18 + TypeScript
 - Tailwind CSS + shadcn/ui
-- Supabase (tabla `bookings` + edge function `send-booking-email`)
+- Supabase (tabla `bookings`)
 - Vitest + Testing Library
 
 ## Requisitos
@@ -72,7 +72,7 @@ src/
       hooks/                  # Hooks de estado de formularios
       pages/                  # Composición de la home
       sections/               # Secciones de UI por responsabilidad
-      services/               # Casos de uso externos (booking + edge function)
+      services/               # Casos de uso externos (booking)
       types/                  # Tipos del dominio home
   integrations/supabase/      # Cliente y tipos de DB
   pages/                      # Rutas de alto nivel (home + 404)
@@ -83,14 +83,14 @@ src/
 ## Flujos principales
 
 - **Landing y navegación:** header con scroll suave a secciones (`fleet`, `about`, `bookings`, `contact`).
-- **Reserva:** valida campos, guarda en Supabase (`bookings`) y luego intenta notificación por edge function.
+- **Reserva:** valida campos y guarda en Supabase (`bookings`).
 - **Contacto:** formulario local con feedback inmediato por toast.
 - **Catálogo:** render de tarjetas de vehículos desde fuente de datos tipada.
 
 
 ## Diagnóstico rápido de Supabase (cuando “no funciona”)
 
-Si en el dashboard ves una función (por ejemplo `send-booking-email`) pero la app sigue fallando, lo más común es que **frontend y CLI estén apuntando a proyectos distintos**.
+Si la app sigue fallando con Supabase, lo más común es que **frontend y CLI estén apuntando a proyectos distintos**.
 
 Ejecuta:
 
@@ -101,7 +101,6 @@ npm run supabase:preflight
 Este chequeo valida:
 - `VITE_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` (proyecto usado por frontend)
 - `supabase/config.toml -> project_id` (proyecto usado por Supabase CLI)
-- funciones edge presentes en `supabase/functions`
 - cantidad de migraciones SQL en el repo
 
 Si aparece algo como:
@@ -161,30 +160,5 @@ Si el guardado en `bookings` falla en producción o queda inconsistente, valida 
 
 5. **Instrumentación en frontend (incluida en este repo)**
    - Logs con prefijo `[supabase]` para validar inicialización y entorno.
-   - Logs con prefijo `[booking]` para `insert:start`, `insert:error`, `insert:success`, `email:start`, `email:result`.
+   - Logs con prefijo `[booking]` para `insert:start`, `insert:error`, `insert:success`.
    - Incluye `traceId` para correlacionar cada intento en consola y logs de red.
-
-## Troubleshooting de Resend (403 validation_error)
-
-Si ves este error:
-
-```json
-{
-  "name": "validation_error",
-  "message": "You can only send testing emails to your own email address ..."
-}
-```
-
-significa que el remitente (`from`) está usando el dominio de pruebas `@resend.dev`.
-
-Para corregirlo en esta app:
-
-1. Configura en la función `send-booking-email`:
-   - `RESEND_FROM=Dal Motorer <reservas@tudominio.com>`
-   - `BOOKING_NOTIFY_TO=<correo donde quieres recibir reservas>`
-   - `RESEND_API_KEY=<tu api key>`
-   - Compatibilidad legacy: también se aceptan `BOOKING_FROM_EMAIL` y `BOOKING_TO_EMAIL`.
-2. Verifica en Resend que el dominio `oldiat.resend.app` está habilitado para tu cuenta/proyecto.
-3. Vuelve a desplegar la edge function.
-
-Nota: la función bloquea remitentes `@resend.dev` y ahora valida que el destinatario sea un email válido.

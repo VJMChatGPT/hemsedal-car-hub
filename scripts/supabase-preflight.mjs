@@ -97,10 +97,6 @@ if (frontendProjectRef && configProjectId && frontendProjectRef !== configProjec
   );
 }
 
-if (!functionNames.includes("send-booking-email")) {
-  issues.push("No existe la función supabase/functions/send-booking-email en este repositorio.");
-}
-
 console.log("\n=== Supabase preflight ===");
 console.log(`Frontend URL: ${supabaseUrl ?? "(no definida)"}`);
 console.log(`Frontend project ref: ${frontendProjectRef ?? "(no detectable)"}`);
