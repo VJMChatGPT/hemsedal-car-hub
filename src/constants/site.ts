@@ -1,10 +1,13 @@
+export const SITE_NAME = "Dal Motorer";
+export const SITE_SLUG = "dalmotorer";
+
 export const SITE_CONFIG = {
-  brandName: "Hemsedal Motors",
+  brandName: SITE_NAME,
   phone: "+47 123 45 678",
-  email: "kontakt@hemsedalmotors.no",
+  email: `kontakt@${SITE_SLUG}.no`,
   address: {
-    street: "Hemsedalsvegen 123",
-    city: "3560 Hemsedal, Norway",
+    street: "Dalsvegen 123",
+    city: "3560 Dal, Norway",
   },
   openingHours: {
     weekdays: "Mon - Fri: 08:00 - 18:00",

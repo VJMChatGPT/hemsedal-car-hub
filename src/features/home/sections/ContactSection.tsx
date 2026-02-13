@@ -90,7 +90,7 @@ export const ContactSection = () => {
             </div>
 
             <div className="bg-muted rounded-xl h-48 flex items-center justify-center">
-              <p className="text-muted-foreground">📍 Located in the heart of Hemsedal</p>
+              <p className="text-muted-foreground">📍 Located in the heart of Dal</p>
             </div>
           </div>
 

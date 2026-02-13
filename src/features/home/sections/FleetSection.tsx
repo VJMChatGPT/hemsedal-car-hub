@@ -9,7 +9,7 @@ export const FleetSection = () => (
       <SectionTitle
         eyebrow="Our Premium Selection"
         title="Choose Your Perfect Ride"
-        description="From luxurious SUVs to eco-friendly electric vehicles, find the ideal car for your Hemsedal adventure. Rent for your trip or purchase your dream car."
+        description="From luxurious SUVs to eco-friendly electric vehicles, find the ideal car for your Dal Motorer adventure. Rent for your trip or purchase your dream car."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -1,6 +1,6 @@
-# Hemsedal Car Hub
+# Dal Motorer
 
-Sitio web de **Hemsedal Motors** para mostrar flota premium, capturar reservas y gestionar contacto comercial.
+Sitio web de **Dal Motorer** para mostrar flota premium, capturar reservas y gestionar contacto comercial.
 
 ## Stack
 

@@ -1,4 +1,4 @@
-import { SECTION_IDS } from "@/constants/site";
+import { SECTION_IDS, SITE_NAME } from "@/constants/site";
 import { SectionTitle } from "@/features/home/components/SectionTitle";
 import { COMPANY_FEATURES } from "@/features/home/data/features";
 
@@ -9,11 +9,11 @@ export const AboutSection = () => (
         <div className="animate-slide-up">
           <p className="text-accent font-medium uppercase tracking-wide mb-2">Why Choose Us</p>
           <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Your Trusted Partner in Hemsedal
+            Your Trusted Partner in {SITE_NAME}
           </h2>
           <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-            Since 2015, Hemsedal Motors has been serving visitors and locals with premium vehicle rental and
-            sales. Whether you're here for world-class skiing, summer hiking, or making Hemsedal your home, we
+            Since 2015, {SITE_NAME} has been serving visitors and locals with premium vehicle rental and
+            sales. Whether you're here for world-class skiing, summer hiking, or making Dal your home, we
             have the perfect vehicle for you.
           </p>
           <p className="text-muted-foreground text-lg leading-relaxed">
