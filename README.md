@@ -180,10 +180,11 @@ significa que el remitente (`from`) está usando el dominio de pruebas `@resend.
 Para corregirlo en esta app:
 
 1. Configura en la función `send-booking-email`:
-   - `BOOKING_FROM_EMAIL=reservas@oldiat.resend.app` (o cualquier `@oldiat.resend.app`)
-   - `BOOKING_TO_EMAIL=<correo donde quieres recibir reservas>`
+   - `RESEND_FROM=Dal Motorer <reservas@tudominio.com>`
+   - `BOOKING_NOTIFY_TO=<correo donde quieres recibir reservas>`
    - `RESEND_API_KEY=<tu api key>`
+   - Compatibilidad legacy: también se aceptan `BOOKING_FROM_EMAIL` y `BOOKING_TO_EMAIL`.
 2. Verifica en Resend que el dominio `oldiat.resend.app` está habilitado para tu cuenta/proyecto.
 3. Vuelve a desplegar la edge function.
 
-Nota: la función ya incluye un fallback defensivo para evitar `@resend.dev` en producción y usar `reservas@oldiat.resend.app`.
+Nota: la función bloquea remitentes `@resend.dev` y ahora valida que el destinatario sea un email válido.
