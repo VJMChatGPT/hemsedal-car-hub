@@ -8,7 +8,7 @@ import { DateRangeStep } from "@/features/home/components/booking/DateRangeStep"
 import { CarSelectionStep } from "@/features/home/components/booking/CarSelectionStep";
 import { CustomerDetailsStep } from "@/features/home/components/booking/CustomerDetailsStep";
 import { useBookingFlow } from "@/features/home/hooks/useBookingFlow";
-import { getAvailableCars, saveBooking, sendBookingNotification } from "@/features/home/services/bookingService";
+import { getAvailableCars, saveBooking } from "@/features/home/services/bookingService";
 import { Vehicle } from "@/features/home/types/home";
 
 const steps = ["Fechas", "Coche", "Tus datos"];
@@ -104,21 +104,7 @@ export const BookingFlow = () => {
         totalPrice,
       });
 
-      const { data, error } = await sendBookingNotification({
-        booking: state.customerDetails,
-        selectedCar: state.selectedCar,
-        bookingSummary,
-        totalPrice,
-      });
-
-      if (error) {
-        console.error("Edge function error:", error);
-        toast.warning("Reserva guardada, pero hubo un problema enviando la notificación por email.");
-      } else if (data?.ok) {
-        toast.success("¡Reserva enviada correctamente!");
-      } else if (data?.error) {
-        toast.warning(`Reserva guardada, pero hubo un problema con el email: ${data.error}`);
-      }
+      toast.success("¡Reserva enviada correctamente!");
 
       setIsSuccessBannerVisible(true);
       resetFlow();
