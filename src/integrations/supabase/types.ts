@@ -14,7 +14,7 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
-          car_id: number | null
+          car_id: string | null
           contact: string
           created_at: string | null
           date: string
@@ -24,9 +24,11 @@ export type Database = {
           notes: string | null
           price_total: number | null
           start_date: string | null
+          status: string
+          updated_at: string
         }
         Insert: {
-          car_id?: number | null
+          car_id?: string | null
           contact: string
           created_at?: string | null
           date: string
@@ -36,9 +38,11 @@ export type Database = {
           notes?: string | null
           price_total?: number | null
           start_date?: string | null
+          status?: string
+          updated_at?: string
         }
         Update: {
-          car_id?: number | null
+          car_id?: string | null
           contact?: string
           created_at?: string | null
           date?: string
@@ -48,8 +52,18 @@ export type Database = {
           notes?: string | null
           price_total?: number | null
           start_date?: string | null
+          status?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bookings_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookings_test: {
         Row: {
@@ -168,7 +182,7 @@ export type Database = {
     Functions: {
       get_unavailable_car_ids: {
         Args: { p_end_date: string; p_start_date: string }
-        Returns: { car_id: number }[]
+        Returns: { car_id: string }[]
       }
       is_admin: {
         Args: Record<PropertyKey, never>

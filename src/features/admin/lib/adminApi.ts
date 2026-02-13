@@ -2,17 +2,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ReservationStatus = "pending" | "accepted" | "rejected" | "cancelled";
 
-export interface AdminReservation {
+export interface AdminBooking {
   id: string;
   car_id: string | null;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string | null;
-  start_date: string;
-  end_date: string;
+  name: string;
+  contact: string;
+  date: string;
+  end_date: string | null;
   status: ReservationStatus;
   notes: string | null;
-  created_at: string;
+  created_at: string | null;
   updated_at: string;
   car?: { name: string } | null;
 }
@@ -25,14 +24,14 @@ export interface AdminCar {
   created_at: string;
 }
 
-export const fetchReservations = async () => {
+export const fetchBookings = async () => {
   const { data, error } = await supabase
-    .from("reservations")
+    .from("bookings")
     .select("*, car:cars(name)")
-    .order("start_date", { ascending: true });
+    .order("date", { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as AdminReservation[];
+  return (data ?? []) as AdminBooking[];
 };
 
 export const fetchCars = async () => {
