@@ -14,14 +14,29 @@ interface BookingRequest {
   email?: string;
 }
 
-const BOOKING_NOTIFY_TO = Deno.env.get("BOOKING_NOTIFY_TO") ?? "marclopezclavero@gmail.com";
-const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Dal Motorer <reservas@dalmotorer.com>";
+const BOOKING_NOTIFY_TO = Deno.env.get("BOOKING_NOTIFY_TO")
+  ?? Deno.env.get("BOOKING_TO_EMAIL")
+  ?? "marclopezclavero@gmail.com";
+
+const RESEND_FROM = Deno.env.get("RESEND_FROM")
+  ?? Deno.env.get("BOOKING_FROM_EMAIL")
+  ?? "Dal Motorer <reservas@dalmotorer.com>";
 const SITE_NAME = "Dal Motorer";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isResendSandboxSender(fromAddress: string): boolean {
   return /@resend\.dev>?$/i.test(fromAddress.trim());
+}
+
+function hasValidRecipient(recipient: string): boolean {
+  const normalized = recipient.trim();
+  if (EMAIL_PATTERN.test(normalized)) {
+    return true;
+  }
+
+  const matchWithName = normalized.match(/<([^>]+)>$/);
+  return Boolean(matchWithName?.[1] && EMAIL_PATTERN.test(matchWithName[1]));
 }
 
 function resolveReplyTo(email?: string, contact?: string): string | undefined {
@@ -53,6 +68,12 @@ const handler = async (req: Request): Promise<Response> => {
     if (isResendSandboxSender(RESEND_FROM)) {
       throw new Error(
         "RESEND_FROM is using resend.dev sandbox sender. Set RESEND_FROM to an address on your verified domain (for example reservas@dalmotorer.com)."
+      );
+    }
+
+    if (!hasValidRecipient(BOOKING_NOTIFY_TO)) {
+      throw new Error(
+        "BOOKING_NOTIFY_TO is invalid. Use a valid destination email (for example reservas@dalmotorer.com)."
       );
     }
 
