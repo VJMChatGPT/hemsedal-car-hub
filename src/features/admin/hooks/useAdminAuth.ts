@@ -10,29 +10,41 @@ export const useAdminAuth = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const load = async () => {
-      const {
-        data: { session: initialSession },
-      } = await supabase.auth.getSession();
-
-      if (!isMounted) return;
-      setSession(initialSession);
-
-      if (!initialSession?.user?.id) {
+    const resolveAdminRole = async (userId?: string) => {
+      if (!userId) {
+        if (!isMounted) return;
         setIsAdmin(false);
-        setLoading(false);
         return;
       }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", initialSession.user.id)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
 
-      if (!isMounted) return;
-      setIsAdmin(data?.role === "admin");
-      setLoading(false);
+        if (error) {
+          console.error("No se pudo cargar el perfil de admin", error);
+        }
+
+        if (!isMounted) return;
+        setIsAdmin(data?.role === "admin");
+      } catch (error) {
+        console.error("Fallo inesperado validando sesión admin", error);
+        if (!isMounted) return;
+        setIsAdmin(false);
+      }
+    };
+
+    const load = async () => {
+      try {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+        setSession(initialSession);
+        await resolveAdminRole(initialSession?.user?.id);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     load();
@@ -41,24 +53,10 @@ export const useAdminAuth = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!isMounted) return;
-      setSession(nextSession);
-
-      if (!nextSession?.user?.id) {
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", nextSession.user.id)
-        .maybeSingle();
-
-      if (!isMounted) return;
-      setIsAdmin(data?.role === "admin");
-      setLoading(false);
+      setSession(nextSession);
+      await resolveAdminRole(nextSession?.user?.id);
+      if (isMounted) setLoading(false);
     });
 
     return () => {
