@@ -13,6 +13,8 @@ import { Vehicle } from "@/features/home/types/home";
 
 const steps = ["Fechas", "Coche", "Tus datos"];
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const BookingFlow = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,6 +105,38 @@ export const BookingFlow = () => {
         endDate: normalizedRange.endDate,
         totalPrice,
       });
+
+      const contact = state.customerDetails.contact.trim();
+      const derivedEmail = emailRegex.test(contact) ? contact : "";
+
+      const reservationPayload = {
+        name: state.customerDetails.name.trim(),
+        email: derivedEmail,
+        car: state.selectedCar.name,
+        dateFrom: normalizedRange.startDate.toISOString(),
+        dateTo: normalizedRange.endDate.toISOString(),
+        phone: derivedEmail ? "" : contact,
+        notes: state.customerDetails.notes.trim(),
+        price: totalPrice,
+      };
+
+      try {
+        const emailResponse = await fetch("/api/reservation-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(reservationPayload),
+        });
+
+        if (!emailResponse.ok) {
+          const emailError = (await emailResponse.json().catch(() => null)) as { error?: string } | null;
+          toast.error(emailError?.error || "La reserva se guardó, pero no se pudo enviar el email de notificación.");
+        }
+      } catch (emailError) {
+        console.error("Error calling /api/reservation-email:", emailError);
+        toast.error("La reserva se guardó, pero falló el envío del email de notificación.");
+      }
 
       toast.success("¡Reserva enviada correctamente!");
 
