@@ -15,7 +15,7 @@ export const COMPANY_FEATURES: FeatureCard[] = [
   {
     icon: MapPin,
     title: "Local Experts",
-    description: "We know Hemsedal inside out and can recommend the best routes and destinations.",
+    description: "We know Dal inside out and can recommend the best routes and destinations.",
   },
   {
     icon: Award,

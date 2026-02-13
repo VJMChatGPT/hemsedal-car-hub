@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/hero-hemsedal.jpg";
-import { SECTION_IDS } from "@/constants/site";
+import heroImage from "@/assets/hero-dalmotorer.jpg";
+import { SECTION_IDS, SITE_NAME } from "@/constants/site";
 import { scrollToSectionById } from "@/utils/scroll";
 
 export const HeroSection = () => (
@@ -19,7 +19,7 @@ export const HeroSection = () => (
           Premium Car Rental & Sales in Norway
         </p>
         <h1 className="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
-          Explore Hemsedal
+          Explore {SITE_NAME}
           <span className="block text-gradient mt-2">In Style</span>
         </h1>
         <p className="text-primary-foreground/90 text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">

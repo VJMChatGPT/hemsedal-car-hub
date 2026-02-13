@@ -16,6 +16,7 @@ interface BookingRequest {
 
 const TO_EMAIL = Deno.env.get("BOOKING_TO_EMAIL") ?? "marclopezclavero@gmail.com";
 const FROM_EMAIL = Deno.env.get("BOOKING_FROM_EMAIL") ?? "reservas@oldiat.resend.app";
+const SITE_NAME = "Dal Motorer";
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -39,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(RESEND_API_KEY);
 
     const { data, error } = await resend.emails.send({
-      from: `Hemsedal Motors <${FROM_EMAIL}>`,
+      from: `${SITE_NAME} <${FROM_EMAIL}>`,
       to: [TO_EMAIL],
       subject: `Nueva reserva de ${name}`,
       html: `
@@ -55,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
           <p style="color: #666; font-size: 12px;">
-            Este email fue enviado desde el formulario de reservas de Hemsedal Motors.
+            Este email fue enviado desde el formulario de reservas de ${SITE_NAME}.
           </p>
         </div>
       `,
