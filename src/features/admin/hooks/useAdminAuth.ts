@@ -51,14 +51,17 @@ export const useAdminAuth = () => {
 
     const load = async () => {
       try {
-        if (!hasValidAdminAuthWindow()) {
-          await supabase.auth.signOut();
-          clearAdminAuthExpiration();
-        }
-
         const {
           data: { session: initialSession },
         } = await supabase.auth.getSession();
+
+        if (initialSession) {
+          if (!hasValidAdminAuthWindow()) {
+            storeAdminAuthExpiration();
+          }
+        } else {
+          clearAdminAuthExpiration();
+        }
 
         if (!isMounted) return;
         setSession(initialSession);
