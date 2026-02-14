@@ -2,6 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+const ADMIN_AUTH_STORAGE_KEY = "admin-auth-expires-at";
+const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+
+const storeAdminAuthExpiration = () => {
+  localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, String(Date.now() + ONE_WEEK_IN_MS));
+};
+
+const clearAdminAuthExpiration = () => {
+  localStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+};
+
+const hasValidAdminAuthWindow = () => {
+  const expiresAt = Number(localStorage.getItem(ADMIN_AUTH_STORAGE_KEY));
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+};
+
 export const useAdminAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,6 +51,11 @@ export const useAdminAuth = () => {
 
     const load = async () => {
       try {
+        if (!hasValidAdminAuthWindow()) {
+          await supabase.auth.signOut();
+          clearAdminAuthExpiration();
+        }
+
         const {
           data: { session: initialSession },
         } = await supabase.auth.getSession();
@@ -53,6 +74,13 @@ export const useAdminAuth = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!isMounted) return;
+
+      if (nextSession) {
+        storeAdminAuthExpiration();
+      } else {
+        clearAdminAuthExpiration();
+      }
+
       setLoading(true);
       setSession(nextSession);
       await resolveAdminRole(nextSession?.user?.id);
