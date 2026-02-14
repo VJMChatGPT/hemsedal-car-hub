@@ -34,6 +34,18 @@ export const useAdminAuth = () => {
       }
 
       try {
+        const { data: isAdminFromRpc, error: rpcError } = await supabase.rpc("is_admin");
+
+        if (!rpcError && typeof isAdminFromRpc === "boolean") {
+          if (!isMounted) return;
+          setIsAdmin(isAdminFromRpc);
+          return;
+        }
+
+        if (rpcError) {
+          console.error("No se pudo validar admin con RPC, intentando fallback por perfil", rpcError);
+        }
+
         const { data, error } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
 
         if (error) {
