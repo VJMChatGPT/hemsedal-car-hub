@@ -39,7 +39,7 @@ export const HeroSection = () => (
             size="lg"
             variant="outline"
             onClick={() => scrollToSectionById(SECTION_IDS.contact)}
-            className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 font-semibold text-lg px-8 py-6"
+            className="border-primary-foreground bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-semibold text-lg px-8 py-6"
           >
             Contact Us
           </Button>
