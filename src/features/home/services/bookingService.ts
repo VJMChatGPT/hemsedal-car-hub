@@ -17,7 +17,7 @@ interface SaveBookingParams {
   totalPrice: number;
 }
 
-const saveReservationMirror = async ({ booking, startDate, endDate }: SaveBookingParams) => {
+const saveReservationMirror = async ({ booking, selectedCar, startDate, endDate }: SaveBookingParams) => {
   const { error } = await supabase.from("reservations").insert({
     customer_name: booking.name.trim(),
     customer_email: booking.contact.trim(),
@@ -26,7 +26,8 @@ const saveReservationMirror = async ({ booking, startDate, endDate }: SaveBookin
     end_date: endDate.toISOString().slice(0, 10),
     status: "pending",
     notes: booking.notes.trim() || null,
-  });
+    car_code: selectedCar.id,
+  } as Record<string, unknown>);
 
   if (error && import.meta.env.DEV) {
     console.warn("[booking] reservation mirror insert failed", error);
@@ -78,10 +79,10 @@ export const getAvailableCars = async (startDate: Date, endDate: Date) => {
     throw new Error("No se pudo consultar disponibilidad de vehículos");
   }
 
-  const unavailable = new Set((data ?? []).map((entry: { car_id: number }) => entry.car_id));
+  const unavailable = new Set((data ?? []).map((entry: { car_code?: number | null; car_id?: string | number | null }) => String(entry.car_code ?? entry.car_id ?? "")));
 
   return VEHICLES
-    .filter((vehicle) => vehicle.isAvailable && !unavailable.has(vehicle.id))
+    .filter((vehicle) => vehicle.isAvailable && !unavailable.has(String(vehicle.id)))
     .sort((a, b) => a.dailyRentPrice - b.dailyRentPrice);
 };
 
@@ -96,7 +97,8 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     end_date: endDate.toISOString(),
     car_id: selectedCar.id,
     price_total: totalPrice,
-  };
+    car_code: selectedCar.id,
+  } as Record<string, unknown>;
 
   logDiagnostic("insert:start", { traceId, payload });
 
