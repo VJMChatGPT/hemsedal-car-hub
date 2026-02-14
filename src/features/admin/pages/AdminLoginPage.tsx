@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
 
 const AdminLoginPage = () => {
   const { isAuthenticated, isAdmin, loading } = useAdminAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,6 +26,7 @@ const AdminLoginPage = () => {
       toast.error("No se pudo iniciar sesión", { description: error.message });
     } else {
       toast.success("Sesión iniciada");
+      navigate(APP_ROUTES.admin, { replace: true });
     }
 
     setIsSubmitting(false);
