@@ -51,13 +51,23 @@ export default async function handler(req, res) {
   }
 
   const reservation = req.body ?? {};
-  const requiredFields = ["name", "email", "car", "dateFrom", "dateTo"];
+  const requiredFields = ["name", "car", "dateFrom", "dateTo"];
   const missingFields = requiredFields.filter((field) => !isNonEmptyString(reservation[field]));
 
   if (missingFields.length > 0) {
     return res.status(400).json({
       ok: false,
       error: `Missing required fields: ${missingFields.join(", ")}`,
+    });
+  }
+
+  const hasEmail = isNonEmptyString(reservation.email);
+  const hasPhone = isNonEmptyString(reservation.phone);
+
+  if (!hasEmail && !hasPhone) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing contact info: provide email or phone",
     });
   }
 
@@ -69,7 +79,8 @@ export default async function handler(req, res) {
       to: notifyEmail,
       from,
       subject,
-      customerEmail: reservation.email,
+      customerEmail: hasEmail ? reservation.email : null,
+      customerPhone: hasPhone ? reservation.phone : null,
     });
 
     const { data, error } = await resend.emails.send({
@@ -77,7 +88,7 @@ export default async function handler(req, res) {
       to: [notifyEmail],
       subject,
       html: buildReservationHtml(reservation),
-      replyTo: reservation.email,
+      ...(hasEmail ? { replyTo: reservation.email } : {}),
     });
 
     if (error) {
