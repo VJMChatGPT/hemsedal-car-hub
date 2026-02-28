@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 
 const DEFAULT_FROM = "Dal Motorer <reservations@dalmotorer.com>";
+const EXTRA_NOTIFY_EMAILS = ["xenorge@gmail.com"];
 
 const getEnv = () => {
   const apiKey = process.env.RESEND_API_KEY;
@@ -50,6 +51,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: "Missing RESERVATION_NOTIFY_EMAIL" });
   }
 
+  const notifyList = [notifyEmail, ...EXTRA_NOTIFY_EMAILS].filter(isNonEmptyString);
+  const uniqueNotifyList = [...new Set(notifyList.map((email) => email.trim().toLowerCase()))];
+
   const reservation = req.body ?? {};
   const requiredFields = ["name", "car", "dateFrom", "dateTo"];
   const missingFields = requiredFields.filter((field) => !isNonEmptyString(reservation[field]));
@@ -76,7 +80,7 @@ export default async function handler(req, res) {
 
   try {
     console.log("[reservation-email] Sending reservation email", {
-      to: notifyEmail,
+      to: uniqueNotifyList,
       from,
       subject,
       customerEmail: hasEmail ? reservation.email : null,
@@ -85,7 +89,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await resend.emails.send({
       from,
-      to: [notifyEmail],
+      to: uniqueNotifyList,
       subject,
       html: buildReservationHtml(reservation),
       ...(hasEmail ? { replyTo: reservation.email } : {}),
