@@ -5,9 +5,8 @@ describe("HomePage", () => {
   it("renders key sections", () => {
     render(<HomePage />);
 
-    expect(screen.getByText("Explore Dal Motorer")).toBeInTheDocument();
-    expect(screen.getByText("Choose Your Perfect Ride")).toBeInTheDocument();
-    expect(screen.getByText("Reserva Tu Vehículo")).toBeInTheDocument();
-    expect(screen.getByText("Ready to Hit the Road?")).toBeInTheDocument();
+    expect(screen.getByText("Drive Norway with calm confidence.")).toBeInTheDocument();
+    expect(screen.getByText("Built for Winter")).toBeInTheDocument();
+    expect(screen.getByText("Pick. Confirm. Drive.")).toBeInTheDocument();
   });
 });
