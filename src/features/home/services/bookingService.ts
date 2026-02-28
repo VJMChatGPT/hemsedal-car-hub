@@ -17,8 +17,16 @@ interface SaveBookingParams {
   totalPrice: number;
 }
 
+const isMissingColumnError = (error: SupabaseErrorShape, columnName: string) => {
+  if (error.code === "PGRST204" || error.code === "42703") {
+    return (error.message?.toLowerCase() ?? "").includes(columnName.toLowerCase());
+  }
+
+  return false;
+};
+
 const saveReservationMirror = async ({ booking, selectedCar, startDate, endDate }: SaveBookingParams) => {
-  const { error } = await supabase.from("reservations").insert({
+  const payload = {
     customer_name: booking.name.trim(),
     customer_email: booking.contact.trim(),
     customer_phone: null,
@@ -27,7 +35,15 @@ const saveReservationMirror = async ({ booking, selectedCar, startDate, endDate 
     status: "pending",
     notes: booking.notes.trim() || null,
     car_code: selectedCar.id,
-  } as Record<string, unknown>);
+  } as Record<string, unknown>;
+
+  let { error } = await supabase.from("reservations").insert(payload);
+
+  if (error && isMissingColumnError(error, "car_code")) {
+    const { car_code: _carCode, ...payloadWithoutCarCode } = payload;
+    const retryResult = await supabase.from("reservations").insert(payloadWithoutCarCode);
+    error = retryResult.error;
+  }
 
   if (error && import.meta.env.DEV) {
     console.warn("[booking] reservation mirror insert failed", error);
@@ -102,7 +118,21 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
 
   logDiagnostic("insert:start", { traceId, payload });
 
-  const { error, status, statusText } = await supabase.from("bookings").insert(payload);
+  let { error, status, statusText } = await supabase.from("bookings").insert(payload);
+
+  if (error && isMissingColumnError(error, "car_code")) {
+    logDiagnostic("insert:retry-without-car_code", {
+      traceId,
+      code: error.code,
+      message: error.message,
+    });
+
+    const { car_code: _carCode, ...payloadWithoutCarCode } = payload;
+    const retryResult = await supabase.from("bookings").insert(payloadWithoutCarCode);
+    error = retryResult.error;
+    status = retryResult.status;
+    statusText = retryResult.statusText;
+  }
 
   if (error) {
     if (isLegacySchemaError(error)) {
