@@ -21,12 +21,13 @@ export const useBookingFlow = () => {
   const [customerDetails, setCustomerDetails] = useState<BookingFormValues>(initialDetails);
 
   const normalizedRange = useMemo(() => {
-    if (!dateRange?.from || !dateRange.to) {
+    if (!dateRange?.from) {
       return null;
     }
 
     const startDate = startOfDay(dateRange.from);
-    const endDate = startOfDay(addDays(dateRange.to, 1));
+    const effectiveTo = dateRange.to ?? dateRange.from;
+    const endDate = startOfDay(addDays(effectiveTo, 1));
     const totalDays = differenceInCalendarDays(endDate, startDate);
 
     if (totalDays <= 0) {

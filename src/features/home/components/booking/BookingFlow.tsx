@@ -34,16 +34,18 @@ export const BookingFlow = () => {
   } = useBookingFlow();
 
   const bookingSummary = useMemo(() => {
-    if (!normalizedRange || !state.dateRange?.to) {
+    if (!normalizedRange || !state.dateRange?.from) {
       return "";
     }
 
+    const checkoutDate = state.dateRange.to ?? state.dateRange.from;
+
     return `Del ${format(normalizedRange.startDate, "dd/MM/yyyy", { locale: es })} al ${format(
-      state.dateRange.to,
+      checkoutDate,
       "dd/MM/yyyy",
       { locale: es },
     )} (${normalizedRange.totalDays} días)`;
-  }, [normalizedRange, state.dateRange?.to]);
+  }, [normalizedRange, state.dateRange?.from, state.dateRange?.to]);
 
   const loadAvailableCars = async () => {
     if (!normalizedRange) {
