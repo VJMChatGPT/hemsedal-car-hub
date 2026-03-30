@@ -28,62 +28,13 @@ export interface AdminCar {
 const isMissingTableError = (code?: string) => code === "42P01";
 const isPermissionDeniedError = (code?: string) => code === "42501";
 const isMissingRelationError = (code?: string) => code === "PGRST200";
-const isMissingColumnError = (code?: string) => code === "42703" || code === "PGRST204";
-
-type GenericRow = Record<string, unknown>;
-
-const toStringOrNull = (value: unknown) => (typeof value === "string" ? value : null);
-const toStatus = (value: unknown): ReservationStatus => {
-  if (value === "accepted" || value === "rejected" || value === "cancelled" || value === "pending") return value;
-  return "pending";
-};
-
-const toBookingDate = (row: GenericRow) => {
-  const dateValue = toStringOrNull(row.date);
-  if (dateValue) return dateValue;
-
-  const startDateValue = toStringOrNull(row.start_date);
-  if (startDateValue) return startDateValue;
-
-  const createdAt = toStringOrNull(row.created_at);
-  return createdAt ?? new Date().toISOString();
-};
-
-const normalizeBooking = (row: GenericRow): AdminBooking => ({
-  id: String(row.id ?? crypto.randomUUID()),
-  sourceTable: "bookings",
-  car_id: toStringOrNull(row.car_id),
-  name: String(row.name ?? "Sin nombre"),
-  contact: String(row.contact ?? row.customer_email ?? "-"),
-  date: toBookingDate(row),
-  end_date: toStringOrNull(row.end_date),
-  status: toStatus(row.status),
-  notes: toStringOrNull(row.notes),
-  created_at: toStringOrNull(row.created_at),
-  updated_at: toStringOrNull(row.updated_at) ?? toStringOrNull(row.created_at) ?? new Date().toISOString(),
-  car: typeof row.car === "object" && row.car !== null ? (row.car as { name: string }) : null,
-});
 
 const fetchBookingsWithFallback = async () => {
   const result = await supabase.from("bookings").select("*, car:cars(name)").order("date", { ascending: true });
   if (!result.error) return result;
 
-  if (isMissingColumnError(result.error.code)) {
-    const byStartDate = await supabase.from("bookings").select("*, car:cars(name)").order("start_date", { ascending: true });
-    if (!byStartDate.error) return byStartDate;
-  }
-
   if (isMissingRelationError(result.error.code)) {
     return supabase.from("bookings").select("*").order("date", { ascending: true });
-  }
-
-  if (isMissingRelationError(result.error.code) || isMissingColumnError(result.error.code)) {
-    const genericResult = await supabase.from("bookings").select("*").order("date", { ascending: true });
-    if (!genericResult.error) return genericResult;
-
-    if (isMissingColumnError(genericResult.error.code)) {
-      return supabase.from("bookings").select("*").order("start_date", { ascending: true });
-    }
   }
 
   return result;
@@ -118,7 +69,12 @@ export const fetchBookings = async () => {
     throw reservationsResult.error;
   }
 
-  const bookings = (bookingsResult.data ?? []).map((booking) => normalizeBooking(booking as GenericRow));
+  const bookings = (bookingsResult.data ?? []).map(
+    (booking): AdminBooking => ({
+      ...(booking as Omit<AdminBooking, "sourceTable">),
+      sourceTable: "bookings",
+    }),
+  );
 
   const mirroredReservations = (reservationsResult.data ?? []).map(
     (reservation): AdminBooking => ({
@@ -129,7 +85,7 @@ export const fetchBookings = async () => {
       contact: reservation.customer_email,
       date: reservation.start_date,
       end_date: reservation.end_date,
-      status: toStatus(reservation.status),
+      status: reservation.status as ReservationStatus,
       notes: reservation.notes,
       created_at: reservation.created_at,
       updated_at: reservation.updated_at,
