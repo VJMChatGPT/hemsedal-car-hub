@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ADMIN_AUTH_STORAGE_KEY = "admin-auth-expires-at";
 const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
-const ADMIN_ROLE_TIMEOUT_MS = 8_000;
 
 const storeAdminAuthExpiration = () => {
   localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, String(Date.now() + ONE_WEEK_IN_MS));
@@ -62,38 +61,7 @@ export const useAdminAuth = () => {
       }
     };
 
-    const resolveAdminRoleWithTimeout = async (userId?: string) => {
-      try {
-        await Promise.race([
-          resolveAdminRole(userId),
-          new Promise((_, reject) =>
-            window.setTimeout(() => reject(new Error("Timeout resolviendo rol admin")), ADMIN_ROLE_TIMEOUT_MS),
-          ),
-        ]);
-      } catch (error) {
-        console.error("No se pudo resolver rol admin a tiempo", error);
-        if (!isMounted) return;
-        setIsAdmin(false);
-      }
-    };
-
-    const applySessionState = async (nextSession: Session | null) => {
-      if (!isMounted) return;
-
-      if (nextSession) {
-        storeAdminAuthExpiration();
-      } else {
-        clearAdminAuthExpiration();
-      }
-
-      setSession(nextSession);
-      await resolveAdminRoleWithTimeout(nextSession?.user?.id);
-    };
-
     const load = async () => {
-      if (!isMounted) return;
-      setLoading(true);
-
       try {
         const {
           data: { session: initialSession },
@@ -109,7 +77,7 @@ export const useAdminAuth = () => {
 
         if (!isMounted) return;
         setSession(initialSession);
-        await resolveAdminRoleWithTimeout(initialSession?.user?.id);
+        await resolveAdminRole(initialSession?.user?.id);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -119,21 +87,19 @@ export const useAdminAuth = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      window.setTimeout(async () => {
-        if (!isMounted) return;
-        setLoading(true);
-        try {
-          await applySessionState(nextSession);
-        } catch (error) {
-          console.error("Fallo procesando cambio de sesión admin", error);
-          if (!isMounted) return;
-          setSession(nextSession);
-          setIsAdmin(false);
-        } finally {
-          if (isMounted) setLoading(false);
-        }
-      }, 0);
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!isMounted) return;
+
+      if (nextSession) {
+        storeAdminAuthExpiration();
+      } else {
+        clearAdminAuthExpiration();
+      }
+
+      setLoading(true);
+      setSession(nextSession);
+      await resolveAdminRole(nextSession?.user?.id);
+      if (isMounted) setLoading(false);
     });
 
     return () => {
