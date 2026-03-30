@@ -90,13 +90,22 @@ const AdminDashboardPage = () => {
     [reservations, statusFilter, carFilter, search, fromDate, toDate],
   );
 
+  const activeReservations = useMemo(
+    () => filteredReservations.filter((reservation) => reservation.status !== "cancelled"),
+    [filteredReservations],
+  );
+  const cancelledReservations = useMemo(
+    () => filteredReservations.filter((reservation) => reservation.status === "cancelled"),
+    [filteredReservations],
+  );
+
   const calendarRange = useMemo(() => {
     if (view === "day") return { start: startOfDay(focusDate), end: endOfDay(focusDate) };
     if (view === "week") return { start: startOfWeek(focusDate), end: endOfWeek(focusDate) };
     return { start: startOfMonth(focusDate), end: endOfMonth(focusDate) };
   }, [view, focusDate]);
 
-  const calendarReservations = filteredReservations.filter((reservation) => {
+  const calendarReservations = activeReservations.filter((reservation) => {
     const start = parseISO(reservation.date);
     const end = parseISO(reservation.end_date ?? reservation.date);
     return (
@@ -330,50 +339,132 @@ const AdminDashboardPage = () => {
           )}
 
           {section === "reservations" && (
-            <Card>
-              <CardContent className="overflow-x-auto p-0">
-                <table className="w-full min-w-[900px] text-sm">
-                  <thead className="bg-slate-100 text-left">
-                    <tr>
-                      <th className="p-3">Fechas</th>
-                      <th>Cliente</th>
-                      <th>Contacto</th>
-                      <th>Coche</th>
-                      <th>Estado</th>
-                      <th>Creado</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReservations.map((reservation) => (
-                      <tr key={reservation.id} className="border-t">
-                        <td className="p-3">
-                          {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
-                        </td>
-                        <td>{reservation.name}</td>
-                        <td>{reservation.contact}</td>
-                        <td>{reservation.car?.name ?? "Sin coche"}</td>
-                        <td>
-                          <BadgeStatus status={reservation.status} />
-                        </td>
-                        <td>{reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : "-"}</td>
-                        <td className="space-x-1 p-3">
-                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "accepted" })}>
-                            Aceptar
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "rejected" })}>
-                            Denegar
-                          </Button>
-                          <Button size="sm" onClick={() => setSelectedReservation(reservation)}>
-                            Detalle
-                          </Button>
-                        </td>
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-2xl font-semibold">{filteredReservations.length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Pendientes</p>
+                    <p className="text-2xl font-semibold">{filteredReservations.filter((reservation) => reservation.status === "pending").length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Aceptadas</p>
+                    <p className="text-2xl font-semibold">{filteredReservations.filter((reservation) => reservation.status === "accepted").length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Canceladas (historial)</p>
+                    <p className="text-2xl font-semibold">{cancelledReservations.length}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reservas activas (pendientes, aceptadas o denegadas)</CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-0">
+                  <table className="w-full min-w-[900px] text-sm">
+                    <thead className="bg-slate-100 text-left">
+                      <tr>
+                        <th className="p-3">Fechas</th>
+                        <th>Cliente</th>
+                        <th>Contacto</th>
+                        <th>Coche</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                        <th></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                    </thead>
+                    <tbody>
+                      {activeReservations.map((reservation) => (
+                        <tr key={reservation.id} className="border-t">
+                          <td className="p-3">
+                            {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
+                          </td>
+                          <td>{reservation.name}</td>
+                          <td>{reservation.contact}</td>
+                          <td>{reservation.car?.name ?? "Sin coche"}</td>
+                          <td>
+                            <BadgeStatus status={reservation.status} />
+                          </td>
+                          <td>{reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : "-"}</td>
+                          <td className="space-x-1 p-3">
+                            <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "accepted" })}>
+                              Aceptar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => updateReservation(reservation, { status: "rejected" })}>
+                              Denegar
+                            </Button>
+                            <Button size="sm" onClick={() => setSelectedReservation(reservation)}>
+                              Detalle
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!loading && activeReservations.length === 0 && (
+                        <tr className="border-t">
+                          <td className="p-4 text-sm text-muted-foreground" colSpan={7}>
+                            No hay reservas activas con los filtros actuales.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Historial de cancelaciones</CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-0">
+                  <table className="w-full min-w-[900px] text-sm">
+                    <thead className="bg-slate-100 text-left">
+                      <tr>
+                        <th className="p-3">Fechas</th>
+                        <th>Cliente</th>
+                        <th>Contacto</th>
+                        <th>Coche</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cancelledReservations.map((reservation) => (
+                        <tr key={reservation.id} className="border-t">
+                          <td className="p-3">
+                            {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
+                          </td>
+                          <td>{reservation.name}</td>
+                          <td>{reservation.contact}</td>
+                          <td>{reservation.car?.name ?? "Sin coche"}</td>
+                          <td>
+                            <BadgeStatus status={reservation.status} />
+                          </td>
+                          <td>{reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : "-"}</td>
+                        </tr>
+                      ))}
+                      {!loading && cancelledReservations.length === 0 && (
+                        <tr className="border-t">
+                          <td className="p-4 text-sm text-muted-foreground" colSpan={6}>
+                            No hay reservas canceladas en el historial para los filtros actuales.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {section === "cars" && (
