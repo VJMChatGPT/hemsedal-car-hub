@@ -20,12 +20,16 @@ const AdminLoginPage = () => {
     event.preventDefault();
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error("No se pudo iniciar sesión", { description: error.message });
+      toast.error("No se pudo iniciar sesion", { description: error.message });
+    } else if (!data.session) {
+      toast.error("No se pudo iniciar sesion", {
+        description: "Supabase no devolvio una sesion valida.",
+      });
     } else {
-      toast.success("Sesión iniciada");
+      toast.success("Sesion iniciada");
       navigate(APP_ROUTES.admin, { replace: true });
     }
 
@@ -41,7 +45,7 @@ const AdminLoginPage = () => {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Admin Panel</CardTitle>
-          <CardDescription>Inicia sesión con tu cuenta de administrador.</CardDescription>
+          <CardDescription>Inicia sesion con tu cuenta de administrador.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -50,7 +54,7 @@ const AdminLoginPage = () => {
               <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password">Contrasena</Label>
               <Input
                 id="password"
                 type="password"

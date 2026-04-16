@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Session } from "@supabase/supabase-js";
+import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 const ADMIN_AUTH_STORAGE_KEY = "admin-auth-expires-at";
@@ -133,7 +133,11 @@ export const useAdminAuth = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, nextSession) => {
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+
       setTimeout(() => {
         if (isMounted) {
           void applySession(nextSession);
