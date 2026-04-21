@@ -54,6 +54,38 @@ const emptyCar: CarEditor = {
 
 const toDateInput = (value: string | null) => (value ? value.slice(0, 10) : "");
 
+const calendarStatusStyles: Record<
+  ReservationStatus,
+  { chip: string; card: string; dot: string; label: string }
+> = {
+  pending: {
+    chip: "border-orange-300 bg-orange-100 text-orange-950 shadow-sm hover:bg-orange-200",
+    card: "border-orange-300 bg-orange-50 hover:bg-orange-100",
+    dot: "bg-orange-500",
+    label: "Pendiente",
+  },
+  accepted: {
+    chip: "border-emerald-300 bg-emerald-100 text-emerald-950 shadow-sm hover:bg-emerald-200",
+    card: "border-emerald-300 bg-emerald-50 hover:bg-emerald-100",
+    dot: "bg-emerald-500",
+    label: "Aceptada",
+  },
+  rejected: {
+    chip: "border-red-300 bg-red-100 text-red-950 shadow-sm hover:bg-red-200",
+    card: "border-red-300 bg-red-50 hover:bg-red-100",
+    dot: "bg-red-500",
+    label: "Denegada",
+  },
+  cancelled: {
+    chip: "border-slate-300 bg-slate-100 text-slate-700 shadow-sm hover:bg-slate-200",
+    card: "border-slate-300 bg-slate-50 hover:bg-slate-100",
+    dot: "bg-slate-400",
+    label: "Cancelada",
+  },
+};
+
+const getCalendarStatusStyle = (status: ReservationStatus) => calendarStatusStyles[status] ?? calendarStatusStyles.pending;
+
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
   const [section, setSection] = useState<AdminSection>("dashboard");
@@ -373,14 +405,23 @@ const AdminDashboardPage = () => {
                           </p>
                           <div className="space-y-1">
                             {dayReservations.slice(0, 2).map((reservation) => (
-                              <button
-                                key={`${reservation.id}-${day.toISOString()}`}
-                                type="button"
-                                className="w-full truncate rounded bg-slate-100 px-2 py-1 text-left text-xs text-foreground hover:bg-slate-200"
-                                onClick={() => setSelectedReservation(reservation)}
-                              >
-                                {reservation.name}
-                              </button>
+                              (() => {
+                                const style = getCalendarStatusStyle(reservation.status);
+
+                                return (
+                                  <button
+                                    key={`${reservation.id}-${day.toISOString()}`}
+                                    type="button"
+                                    className={`w-full rounded border px-2 py-1 text-left text-xs font-medium transition ${style.chip}`}
+                                    onClick={() => setSelectedReservation(reservation)}
+                                  >
+                                    <span className="flex min-w-0 items-center gap-1.5">
+                                      <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                                      <span className="truncate">{reservation.name}</span>
+                                    </span>
+                                  </button>
+                                );
+                              })()
                             ))}
                             {dayReservations.length > 2 && <p className="text-[11px]">+{dayReservations.length - 2} más</p>}
                           </div>
@@ -391,24 +432,35 @@ const AdminDashboardPage = () => {
                 )}
 
                 {view !== "month" &&
-                  calendarReservations.map((reservation) => (
-                    <button
-                      key={reservation.id}
-                      type="button"
-                      className="w-full rounded-lg border bg-white p-3 text-left hover:bg-slate-50"
-                      onClick={() => setSelectedReservation(reservation)}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium">
-                          {reservation.name} – {getCarName(reservation.car_id)}
-                        </p>
-                        <BadgeStatus status={reservation.status} />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
-                      </p>
-                    </button>
-                  ))}
+                  calendarReservations.map((reservation) => {
+                    const style = getCalendarStatusStyle(reservation.status);
+
+                    return (
+                      <button
+                        key={reservation.id}
+                        type="button"
+                        className={`w-full rounded-lg border p-3 text-left transition ${style.card}`}
+                        onClick={() => setSelectedReservation(reservation)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-2 font-medium">
+                              <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
+                              <span className="truncate">
+                                {reservation.name} – {getCarName(reservation.car_id)}
+                              </span>
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-foreground shadow-sm">
+                            {style.label}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 {!loading && calendarReservations.length === 0 && <p className="text-sm text-muted-foreground">No hay reservas en este rango.</p>}
               </CardContent>
             </Card>
