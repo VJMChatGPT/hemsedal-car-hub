@@ -59,9 +59,22 @@ const AdminDashboardPage = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [bookingData, carData] = await Promise.all([fetchBookings(), fetchCars()]);
-      setReservations(bookingData);
-      setCars(carData);
+      const [bookingsResult, carsResult] = await Promise.allSettled([fetchBookings(), fetchCars()]);
+
+      if (bookingsResult.status === "fulfilled") {
+        setReservations(bookingsResult.value);
+      } else {
+        console.error(bookingsResult.reason);
+        toast.error("No se pudieron cargar las reservas de bookings");
+      }
+
+      if (carsResult.status === "fulfilled") {
+        setCars(carsResult.value);
+      } else {
+        console.error(carsResult.reason);
+        setCars([]);
+        toast.error("No se pudieron cargar los coches");
+      }
     } catch (error) {
       console.error(error);
       toast.error("No se pudo cargar el panel");

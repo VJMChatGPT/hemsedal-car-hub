@@ -26,7 +26,6 @@ export interface AdminCar {
 }
 
 const isMissingTableError = (code?: string) => code === "42P01";
-const isPermissionDeniedError = (code?: string) => code === "42501";
 const isMissingRelationError = (code?: string) => code === "PGRST200";
 
 const fetchBookingsWithFallback = async () => {
@@ -40,60 +39,24 @@ const fetchBookingsWithFallback = async () => {
   return result;
 };
 
-const fetchReservationsWithFallback = async () => {
-  const result = await supabase.from("reservations").select("*, car:cars(name)").order("start_date", { ascending: true });
-  if (!result.error) return result;
-
-  if (isMissingRelationError(result.error.code)) {
-    return supabase.from("reservations").select("*").order("start_date", { ascending: true });
-  }
-
-  return result;
-};
-
 export const fetchBookings = async () => {
-  const [bookingsResult, reservationsResult] = await Promise.all([
-    fetchBookingsWithFallback(),
-    fetchReservationsWithFallback(),
-  ]);
+  const bookingsResult = await fetchBookingsWithFallback();
 
   if (bookingsResult.error && !isMissingTableError(bookingsResult.error.code)) {
     throw bookingsResult.error;
-  }
-
-  if (
-    reservationsResult.error &&
-    !isMissingTableError(reservationsResult.error.code) &&
-    !isPermissionDeniedError(reservationsResult.error.code)
-  ) {
-    throw reservationsResult.error;
   }
 
   const bookings = (bookingsResult.data ?? []).map(
     (booking): AdminBooking => ({
       ...(booking as Omit<AdminBooking, "sourceTable">),
       sourceTable: "bookings",
+      status: booking.status as ReservationStatus,
+      end_date: booking.end_date ?? booking.start_date ?? booking.date,
+      car: "car" in booking ? booking.car : null,
     }),
   );
 
-  const mirroredReservations = (reservationsResult.data ?? []).map(
-    (reservation): AdminBooking => ({
-      id: `reservation-${reservation.id}`,
-      sourceTable: "reservations",
-      car_id: reservation.car_id,
-      name: reservation.customer_name,
-      contact: reservation.customer_email,
-      date: reservation.start_date,
-      end_date: reservation.end_date,
-      status: reservation.status as ReservationStatus,
-      notes: reservation.notes,
-      created_at: reservation.created_at,
-      updated_at: reservation.updated_at,
-      car: reservation.car,
-    }),
-  );
-
-  return [...bookings, ...mirroredReservations].sort((a, b) => a.date.localeCompare(b.date));
+  return bookings.sort((a, b) => a.date.localeCompare(b.date));
 };
 
 export const fetchCars = async () => {
