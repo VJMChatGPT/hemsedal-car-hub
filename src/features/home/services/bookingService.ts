@@ -52,12 +52,8 @@ const getBookingInsertErrorMessage = (error: SupabaseErrorShape) => {
 };
 
 const isLegacySchemaError = (error: SupabaseErrorShape) => {
-  if (error.code === "42703") {
-    return true;
-  }
-
   const message = error.message?.toLowerCase() ?? "";
-  return message.includes("start_date") || message.includes("end_date") || message.includes("price_total");
+  return message.includes("start_date") || message.includes("end_date") || message.includes("car_id") || message.includes("status");
 };
 
 export const getAvailableCars = async (startDate: Date, endDate: Date) => {
@@ -98,6 +94,39 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
   let { error, status, statusText } = await supabase.from("bookings").insert(payload);
 
   if (error) {
+    if (isMissingColumnError(error, "price_total")) {
+      logDiagnostic("insert:without-price-total:fallback", {
+        traceId,
+        code: error.code,
+        message: error.message,
+      });
+
+      const { price_total: _priceTotal, ...payloadWithoutPriceTotal } = payload;
+      const retryResult = await supabase.from("bookings").insert(payloadWithoutPriceTotal);
+
+      if (!retryResult.error) {
+        logDiagnostic("insert:without-price-total:success", {
+          traceId,
+          status: retryResult.status,
+          statusText: retryResult.statusText,
+        });
+
+        return;
+      }
+
+      logDiagnostic("insert:without-price-total:error", {
+        traceId,
+        status: retryResult.status,
+        statusText: retryResult.statusText,
+        code: retryResult.error.code,
+        message: retryResult.error.message,
+        details: retryResult.error.details,
+        hint: retryResult.error.hint,
+      });
+
+      throw new Error(getBookingInsertErrorMessage(retryResult.error));
+    }
+
     if (isLegacySchemaError(error)) {
       logDiagnostic("insert:legacy-schema:fallback", {
         traceId,

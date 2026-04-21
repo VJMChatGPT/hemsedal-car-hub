@@ -30,6 +30,7 @@ import { BadgeStatus } from "@/features/admin/components/BadgeStatus";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { SidePanel } from "@/features/admin/components/SidePanel";
 import { AdminBooking, AdminCar, ReservationStatus, fetchBookings, fetchCars } from "@/features/admin/lib/adminApi";
+import { VEHICLES } from "@/features/home/data/vehicles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -198,7 +199,8 @@ const AdminDashboardPage = () => {
 
   const getCarName = (carId: string | number | null) => {
     const car = cars.find((item) => String(item.code) === String(carId));
-    return car?.name ?? "Sin coche";
+    const fallbackCar = VEHICLES.find((vehicle) => String(vehicle.id) === String(carId));
+    return car?.name ?? fallbackCar?.name ?? "Sin coche";
   };
 
   const visibleReservationIds = useMemo(() => filteredReservations.map((reservation) => reservation.id), [filteredReservations]);
