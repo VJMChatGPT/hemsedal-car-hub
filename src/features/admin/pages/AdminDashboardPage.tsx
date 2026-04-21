@@ -21,6 +21,7 @@ import {
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -67,6 +68,7 @@ const AdminDashboardPage = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedReservation, setSelectedReservation] = useState<AdminBooking | null>(null);
+  const [selectedReservationIds, setSelectedReservationIds] = useState<string[]>([]);
   const [carEditor, setCarEditor] = useState<CarEditor | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -167,6 +169,26 @@ const AdminDashboardPage = () => {
     return car?.name ?? "Sin coche";
   };
 
+  const visibleReservationIds = useMemo(() => filteredReservations.map((reservation) => reservation.id), [filteredReservations]);
+  const areAllVisibleReservationsSelected =
+    visibleReservationIds.length > 0 && visibleReservationIds.every((id) => selectedReservationIds.includes(id));
+
+  const toggleReservationSelection = (reservationId: string) => {
+    setSelectedReservationIds((current) =>
+      current.includes(reservationId) ? current.filter((id) => id !== reservationId) : [...current, reservationId],
+    );
+  };
+
+  const toggleAllVisibleReservations = () => {
+    setSelectedReservationIds((current) => {
+      if (areAllVisibleReservationsSelected) {
+        return current.filter((id) => !visibleReservationIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...visibleReservationIds]));
+    });
+  };
+
   const updateReservation = async (reservation: AdminBooking, patch: Partial<AdminBooking>) => {
     const { error } = await supabase.from("bookings").update(patch).eq("id", reservation.id);
     if (error) {
@@ -210,6 +232,21 @@ const AdminDashboardPage = () => {
     }
 
     setCarEditor(null);
+    await load();
+  };
+
+  const deleteReservations = async (reservationIds: string[]) => {
+    if (reservationIds.length === 0) return;
+
+    const { error } = await supabase.from("bookings").delete().in("id", reservationIds);
+    if (error) {
+      toast.error("No se pudieron borrar las reservas", { description: error.message });
+      return;
+    }
+
+    setSelectedReservationIds((current) => current.filter((id) => !reservationIds.includes(id)));
+    setSelectedReservation((current) => (current && reservationIds.includes(current.id) ? null : current));
+    toast.success(reservationIds.length === 1 ? "Reserva eliminada" : "Reservas eliminadas");
     await load();
   };
 
@@ -379,10 +416,32 @@ const AdminDashboardPage = () => {
 
           {section === "reservations" && (
             <Card>
+              <CardHeader className="flex flex-wrap items-center justify-between gap-2 sm:flex-row">
+                <CardTitle>Lista de reservas</CardTitle>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">{selectedReservationIds.length} seleccionadas</p>
+                  <ConfirmDialog
+                    title="Eliminar reservas"
+                    description={`Se eliminaran ${selectedReservationIds.length} reservas seleccionadas. Esta accion no se puede deshacer.`}
+                    onConfirm={() => deleteReservations(selectedReservationIds)}
+                  >
+                    <Button variant="destructive" disabled={selectedReservationIds.length === 0}>
+                      Eliminar seleccionadas
+                    </Button>
+                  </ConfirmDialog>
+                </div>
+              </CardHeader>
               <CardContent className="overflow-x-auto p-0">
                 <table className="w-full min-w-[900px] text-sm">
                   <thead className="bg-slate-100 text-left">
                     <tr>
+                      <th className="p-3">
+                        <Checkbox
+                          checked={areAllVisibleReservationsSelected}
+                          onCheckedChange={toggleAllVisibleReservations}
+                          aria-label="Seleccionar reservas visibles"
+                        />
+                      </th>
                       <th className="p-3">Fechas</th>
                       <th>Cliente</th>
                       <th>Contacto</th>
@@ -395,6 +454,13 @@ const AdminDashboardPage = () => {
                   <tbody>
                     {filteredReservations.map((reservation) => (
                       <tr key={reservation.id} className="border-t">
+                        <td className="p-3">
+                          <Checkbox
+                            checked={selectedReservationIds.includes(reservation.id)}
+                            onCheckedChange={() => toggleReservationSelection(reservation.id)}
+                            aria-label={`Seleccionar reserva de ${reservation.name}`}
+                          />
+                        </td>
                         <td className="p-3">
                           {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
                         </td>
@@ -415,6 +481,15 @@ const AdminDashboardPage = () => {
                           <Button size="sm" onClick={() => setSelectedReservation(reservation)}>
                             Detalle
                           </Button>
+                          <ConfirmDialog
+                            title="Eliminar reserva"
+                            description="Esta reserva se eliminara de bookings. Esta accion no se puede deshacer."
+                            onConfirm={() => deleteReservations([reservation.id])}
+                          >
+                            <Button size="sm" variant="destructive">
+                              Borrar
+                            </Button>
+                          </ConfirmDialog>
                         </td>
                       </tr>
                     ))}
