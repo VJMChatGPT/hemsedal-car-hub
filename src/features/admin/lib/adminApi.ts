@@ -13,7 +13,6 @@ export interface AdminBooking {
   notes: string | null;
   created_at: string | null;
   updated_at: string;
-  car?: { name: string } | null;
 }
 
 export interface AdminCar {
@@ -33,21 +32,9 @@ export interface AdminCar {
 }
 
 const isMissingTableError = (code?: string) => code === "42P01";
-const isMissingRelationError = (code?: string) => code === "PGRST200";
-
-const fetchBookingsWithFallback = async () => {
-  const result = await supabase.from("bookings").select("*, car:cars(name)").order("date", { ascending: true });
-  if (!result.error) return result;
-
-  if (isMissingRelationError(result.error.code)) {
-    return supabase.from("bookings").select("*").order("date", { ascending: true });
-  }
-
-  return result;
-};
 
 export const fetchBookings = async () => {
-  const bookingsResult = await fetchBookingsWithFallback();
+  const bookingsResult = await supabase.from("bookings").select("*").order("date", { ascending: true });
 
   if (bookingsResult.error && !isMissingTableError(bookingsResult.error.code)) {
     throw bookingsResult.error;
@@ -58,7 +45,6 @@ export const fetchBookings = async () => {
       ...(booking as AdminBooking),
       status: booking.status as ReservationStatus,
       end_date: booking.end_date ?? booking.start_date ?? booking.date,
-      car: "car" in booking ? booking.car : null,
     }),
   );
 
