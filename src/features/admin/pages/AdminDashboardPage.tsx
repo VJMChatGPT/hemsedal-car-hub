@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   addDays,
   addMonths,
@@ -23,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { APP_ROUTES } from "@/constants/site";
 import { BadgeStatus } from "@/features/admin/components/BadgeStatus";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { SidePanel } from "@/features/admin/components/SidePanel";
@@ -38,6 +40,7 @@ const emptyCar = { id: "new", name: "", category: "", active: true };
 const toDateInput = (value: string | null) => (value ? value.slice(0, 10) : "");
 
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
   const [section, setSection] = useState<AdminSection>("dashboard");
   const [view, setView] = useState<CalendarView>("month");
   const [focusDate, setFocusDate] = useState(new Date());
@@ -51,6 +54,7 @@ const AdminDashboardPage = () => {
   const [toDate, setToDate] = useState("");
   const [selectedReservation, setSelectedReservation] = useState<AdminBooking | null>(null);
   const [carEditor, setCarEditor] = useState<{ id: string; name: string; category: string; active: boolean } | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -183,6 +187,21 @@ const AdminDashboardPage = () => {
     await load();
   };
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error("No se pudo cerrar sesion", { description: error.message });
+      setIsLoggingOut(false);
+      return;
+    }
+
+    toast.success("Sesion cerrada");
+    navigate(APP_ROUTES.adminLogin, { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       <div className="grid gap-4 lg:grid-cols-[230px_1fr]">
@@ -200,6 +219,9 @@ const AdminDashboardPage = () => {
           ))}
           <Button className="mt-3 w-full" variant="outline" onClick={() => load()}>
             Recargar
+          </Button>
+          <Button className="mt-2 w-full" variant="destructive" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
           </Button>
         </aside>
 
