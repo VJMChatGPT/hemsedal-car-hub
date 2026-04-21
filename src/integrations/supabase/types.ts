@@ -87,23 +87,47 @@ export type Database = {
         Row: {
           active: boolean
           category: string | null
+          code: number
           created_at: string
+          daily_rent_price: number
+          featured: boolean
+          fuel_type: string
           id: string
+          image_url: string | null
           name: string
+          purchase_price: number
+          seats: number
+          transmission: string
         }
         Insert: {
           active?: boolean
           category?: string | null
+          code: number
           created_at?: string
+          daily_rent_price?: number
+          featured?: boolean
+          fuel_type?: string
           id?: string
+          image_url?: string | null
           name: string
+          purchase_price?: number
+          seats?: number
+          transmission?: string
         }
         Update: {
           active?: boolean
           category?: string | null
+          code?: number
           created_at?: string
+          daily_rent_price?: number
+          featured?: boolean
+          fuel_type?: string
           id?: string
+          image_url?: string | null
           name?: string
+          purchase_price?: number
+          seats?: number
+          transmission?: string
         }
         Relationships: []
       }

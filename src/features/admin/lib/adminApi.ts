@@ -4,7 +4,7 @@ export type ReservationStatus = "pending" | "accepted" | "rejected" | "cancelled
 
 export interface AdminBooking {
   id: string;
-  car_id: string | null;
+  car_id: string | number | null;
   name: string;
   contact: string;
   date: string;
@@ -18,8 +18,16 @@ export interface AdminBooking {
 
 export interface AdminCar {
   id: string;
+  code: number;
   name: string;
   category: string | null;
+  image_url: string | null;
+  seats: number;
+  fuel_type: string;
+  transmission: string;
+  daily_rent_price: number;
+  purchase_price: number;
+  featured: boolean;
   active: boolean;
   created_at: string;
 }
@@ -58,7 +66,7 @@ export const fetchBookings = async () => {
 };
 
 export const fetchCars = async () => {
-  const { data, error } = await supabase.from("cars").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("cars").select("*").order("code", { ascending: true });
   if (error) throw error;
   return (data ?? []) as AdminCar[];
 };

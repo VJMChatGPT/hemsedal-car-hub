@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { VEHICLES } from "@/features/home/data/vehicles";
+import { fetchPublicCars } from "@/features/home/services/carService";
 import { BookingFormValues, Vehicle } from "@/features/home/types/home";
 
 type SupabaseErrorShape = {
@@ -72,7 +72,9 @@ export const getAvailableCars = async (startDate: Date, endDate: Date) => {
 
   const unavailable = new Set((data ?? []).map((entry: { car_id?: string | number | null }) => String(entry.car_id ?? "")));
 
-  return VEHICLES
+  const cars = await fetchPublicCars();
+
+  return cars
     .filter((vehicle) => vehicle.isAvailable && !unavailable.has(String(vehicle.id)))
     .sort((a, b) => a.dailyRentPrice - b.dailyRentPrice);
 };

@@ -34,8 +34,22 @@ import { toast } from "sonner";
 
 type AdminSection = "dashboard" | "reservations" | "cars" | "settings";
 type CalendarView = "month" | "week" | "day";
+type CarEditor = Omit<AdminCar, "created_at"> | (Omit<AdminCar, "id" | "created_at"> & { id: "new" });
 
-const emptyCar = { id: "new", name: "", category: "", active: true };
+const emptyCar: CarEditor = {
+  id: "new",
+  code: 0,
+  name: "",
+  category: "",
+  image_url: "",
+  seats: 5,
+  fuel_type: "Petrol",
+  transmission: "Manual",
+  daily_rent_price: 0,
+  purchase_price: 0,
+  featured: false,
+  active: true,
+};
 
 const toDateInput = (value: string | null) => (value ? value.slice(0, 10) : "");
 
@@ -53,7 +67,7 @@ const AdminDashboardPage = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedReservation, setSelectedReservation] = useState<AdminBooking | null>(null);
-  const [carEditor, setCarEditor] = useState<{ id: string; name: string; category: string; active: boolean } | null>(null);
+  const [carEditor, setCarEditor] = useState<CarEditor | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const load = async () => {
@@ -94,7 +108,7 @@ const AdminDashboardPage = () => {
         const end = toDateInput(reservation.end_date ?? reservation.date);
 
         if (statusFilter !== "all" && reservation.status !== statusFilter) return false;
-        if (carFilter !== "all" && reservation.car_id !== carFilter) return false;
+        if (carFilter !== "all" && String(reservation.car_id) !== carFilter) return false;
         if (fromDate && start < fromDate) return false;
         if (toDate && end > toDate) return false;
         if (search) {
@@ -148,6 +162,11 @@ const AdminDashboardPage = () => {
     if (view === "month") setFocusDate(direction > 0 ? addMonths(focusDate, 1) : subMonths(focusDate, 1));
   };
 
+  const getCarName = (carId: string | number | null) => {
+    const car = cars.find((item) => String(item.code) === String(carId));
+    return car?.name ?? "Sin coche";
+  };
+
   const updateReservation = async (reservation: AdminBooking, patch: Partial<AdminBooking>) => {
     const { error } = await supabase.from("bookings").update(patch).eq("id", reservation.id);
     if (error) {
@@ -161,7 +180,24 @@ const AdminDashboardPage = () => {
 
   const saveCar = async () => {
     if (!carEditor?.name.trim()) return;
-    const payload = { name: carEditor.name.trim(), category: carEditor.category || null, active: carEditor.active };
+    if (!carEditor.code || carEditor.code < 1) {
+      toast.error("El codigo del coche debe ser mayor que 0");
+      return;
+    }
+
+    const payload = {
+      code: Number(carEditor.code),
+      name: carEditor.name.trim(),
+      category: carEditor.category || null,
+      image_url: carEditor.image_url || null,
+      seats: Number(carEditor.seats),
+      fuel_type: carEditor.fuel_type.trim() || "Petrol",
+      transmission: carEditor.transmission.trim() || "Manual",
+      daily_rent_price: Number(carEditor.daily_rent_price),
+      purchase_price: Number(carEditor.purchase_price),
+      featured: carEditor.featured,
+      active: carEditor.active,
+    };
 
     if (carEditor.id === "new") {
       const { error } = await supabase.from("cars").insert(payload);
@@ -244,9 +280,9 @@ const AdminDashboardPage = () => {
                     <SelectContent>
                       <SelectItem value="all">Todos los coches</SelectItem>
                       {cars.map((car) => (
-                        <SelectItem key={car.id} value={car.id}>
-                          {car.name}
-                        </SelectItem>
+                      <SelectItem key={car.id} value={String(car.code)}>
+                        {car.name}
+                      </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -327,7 +363,7 @@ const AdminDashboardPage = () => {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium">
-                          {reservation.name} – {reservation.car?.name ?? "Sin coche"}
+                          {reservation.name} – {getCarName(reservation.car_id)}
                         </p>
                         <BadgeStatus status={reservation.status} />
                       </div>
@@ -364,7 +400,7 @@ const AdminDashboardPage = () => {
                         </td>
                         <td>{reservation.name}</td>
                         <td>{reservation.contact}</td>
-                        <td>{reservation.car?.name ?? "Sin coche"}</td>
+                        <td>{getCarName(reservation.car_id)}</td>
                         <td>
                           <BadgeStatus status={reservation.status} />
                         </td>
@@ -399,12 +435,30 @@ const AdminDashboardPage = () => {
               <CardContent className="space-y-2">
                 {cars.map((car) => (
                   <div key={car.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-                    <div>
-                      <p className="font-medium">{car.name}</p>
-                      <p className="text-xs text-muted-foreground">{car.category || "Sin categoría"}</p>
+                    <div className="flex min-w-0 gap-3">
+                      {car.image_url ? <img src={car.image_url} alt={car.name} className="h-16 w-24 rounded-md object-cover" /> : null}
+                      <div>
+                        <p className="font-medium">{car.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Codigo {car.code} · {car.category || "Sin categoria"} · {car.seats} plazas · {car.fuel_type} · {car.transmission}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Alquiler {car.daily_rent_price} · Compra {car.purchase_price} · {car.featured ? "Destacado" : "Normal"}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setCarEditor({ ...car, category: car.category || "" })}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setCarEditor({
+                            ...car,
+                            category: car.category || "",
+                            image_url: car.image_url || "",
+                          })
+                        }
+                      >
                         Editar
                       </Button>
                       <Button
@@ -478,8 +532,13 @@ const AdminDashboardPage = () => {
             </div>
 
             <Select
-              value={selectedReservation.car_id ?? "none"}
-              onValueChange={(value) => setSelectedReservation({ ...selectedReservation, car_id: value === "none" ? null : value })}
+              value={selectedReservation.car_id ? String(selectedReservation.car_id) : "none"}
+              onValueChange={(value) =>
+                setSelectedReservation({
+                  ...selectedReservation,
+                  car_id: value === "none" ? null : Number(value),
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Asignar coche" />
@@ -487,7 +546,7 @@ const AdminDashboardPage = () => {
               <SelectContent>
                 <SelectItem value="none">Sin coche</SelectItem>
                 {cars.map((car) => (
-                  <SelectItem key={car.id} value={car.id}>
+                  <SelectItem key={car.id} value={String(car.code)}>
                     {car.name}
                   </SelectItem>
                 ))}
@@ -547,24 +606,101 @@ const AdminDashboardPage = () => {
 
       <SidePanel title={carEditor?.id === "new" ? "Nuevo coche" : "Editar coche"} open={Boolean(carEditor)} onOpenChange={(open) => !open && setCarEditor(null)}>
         {carEditor && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <Label>Codigo</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={carEditor.code}
+                  onChange={(event) => setCarEditor({ ...carEditor, code: Number(event.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Input value={carEditor.category ?? ""} onChange={(event) => setCarEditor({ ...carEditor, category: event.target.value })} />
+              </div>
+            </div>
+
             <div>
               <Label>Nombre</Label>
               <Input value={carEditor.name} onChange={(event) => setCarEditor({ ...carEditor, name: event.target.value })} />
             </div>
+
             <div>
-              <Label>Categoría</Label>
-              <Input value={carEditor.category} onChange={(event) => setCarEditor({ ...carEditor, category: event.target.value })} />
+              <Label>URL de imagen</Label>
+              <Input value={carEditor.image_url ?? ""} onChange={(event) => setCarEditor({ ...carEditor, image_url: event.target.value })} />
             </div>
-            <Select value={carEditor.active ? "yes" : "no"} onValueChange={(value) => setCarEditor({ ...carEditor, active: value === "yes" })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yes">Activo</SelectItem>
-                <SelectItem value="no">Inactivo</SelectItem>
-              </SelectContent>
-            </Select>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <Label>Plazas</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={carEditor.seats}
+                  onChange={(event) => setCarEditor({ ...carEditor, seats: Number(event.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Combustible</Label>
+                <Input value={carEditor.fuel_type} onChange={(event) => setCarEditor({ ...carEditor, fuel_type: event.target.value })} />
+              </div>
+              <div>
+                <Label>Transmision</Label>
+                <Input value={carEditor.transmission} onChange={(event) => setCarEditor({ ...carEditor, transmission: event.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <Label>Precio alquiler/dia</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={carEditor.daily_rent_price}
+                  onChange={(event) => setCarEditor({ ...carEditor, daily_rent_price: Number(event.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Precio compra</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={carEditor.purchase_price}
+                  onChange={(event) => setCarEditor({ ...carEditor, purchase_price: Number(event.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <Label>Visible en web</Label>
+                <Select value={carEditor.active ? "yes" : "no"} onValueChange={(value) => setCarEditor({ ...carEditor, active: value === "yes" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Activo</SelectItem>
+                    <SelectItem value="no">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Destacado</Label>
+                <Select value={carEditor.featured ? "yes" : "no"} onValueChange={(value) => setCarEditor({ ...carEditor, featured: value === "yes" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Si</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Button onClick={saveCar}>Guardar coche</Button>
           </div>
         )}
