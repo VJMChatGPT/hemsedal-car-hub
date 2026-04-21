@@ -91,7 +91,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string | null
-          code: number
+          code?: number
           created_at?: string
           daily_rent_price?: number
           featured?: boolean

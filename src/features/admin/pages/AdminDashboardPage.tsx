@@ -36,11 +36,13 @@ import { toast } from "sonner";
 
 type AdminSection = "dashboard" | "reservations" | "cars" | "settings";
 type CalendarView = "month" | "week" | "day";
-type CarEditor = Omit<AdminCar, "created_at"> | (Omit<AdminCar, "id" | "created_at"> & { id: "new" });
+type ExistingCarEditor = Omit<AdminCar, "created_at">;
+type NewCarEditor = Omit<AdminCar, "id" | "code" | "created_at"> & { id: "new"; code: null };
+type CarEditor = ExistingCarEditor | NewCarEditor;
 
 const emptyCar: CarEditor = {
   id: "new",
-  code: 0,
+  code: null,
   name: "",
   category: "",
   image_url: "",
@@ -236,13 +238,8 @@ const AdminDashboardPage = () => {
 
   const saveCar = async () => {
     if (!carEditor?.name.trim()) return;
-    if (!carEditor.code || carEditor.code < 1) {
-      toast.error("El codigo del coche debe ser mayor que 0");
-      return;
-    }
 
     const payload = {
-      code: Number(carEditor.code),
       name: carEditor.name.trim(),
       category: carEditor.category || null,
       image_url: carEditor.image_url || null,
@@ -740,10 +737,8 @@ const AdminDashboardPage = () => {
               <div>
                 <Label>Codigo</Label>
                 <Input
-                  type="number"
-                  min={1}
-                  value={carEditor.code}
-                  onChange={(event) => setCarEditor({ ...carEditor, code: Number(event.target.value) })}
+                  value={carEditor.id === "new" ? "Automatico al guardar" : carEditor.code}
+                  disabled
                 />
               </div>
               <div>
