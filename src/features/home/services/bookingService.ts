@@ -14,16 +14,7 @@ interface SaveBookingParams {
   selectedCar: Vehicle;
   startDate: Date;
   endDate: Date;
-  totalPrice: number;
 }
-
-const isMissingColumnError = (error: SupabaseErrorShape, columnName: string) => {
-  if (error.code === "PGRST204" || error.code === "42703") {
-    return (error.message?.toLowerCase() ?? "").includes(columnName.toLowerCase());
-  }
-
-  return false;
-};
 
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -51,11 +42,6 @@ const getBookingInsertErrorMessage = (error: SupabaseErrorShape) => {
   return "Error al guardar la reserva en la base de datos";
 };
 
-const isLegacySchemaError = (error: SupabaseErrorShape) => {
-  const message = error.message?.toLowerCase() ?? "";
-  return message.includes("start_date") || message.includes("end_date") || message.includes("car_id") || message.includes("status");
-};
-
 export const getAvailableCars = async (startDate: Date, endDate: Date) => {
   const { data, error } = await supabase.rpc("get_unavailable_car_ids", {
     p_start_date: startDate.toISOString(),
@@ -75,8 +61,14 @@ export const getAvailableCars = async (startDate: Date, endDate: Date) => {
     .sort((a, b) => a.dailyRentPrice - b.dailyRentPrice);
 };
 
-export const saveBooking = async ({ booking, selectedCar, startDate, endDate, totalPrice }: SaveBookingParams) => {
+export const saveBooking = async ({ booking, selectedCar, startDate, endDate }: SaveBookingParams) => {
   const traceId = createTraceId();
+  const carId = Number(selectedCar.id);
+
+  if (!Number.isFinite(carId)) {
+    throw new Error("No se pudo identificar el coche seleccionado");
+  }
+
   const payload = {
     name: booking.name.trim(),
     contact: booking.contact.trim(),
@@ -84,8 +76,7 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     date: startDate.toISOString(),
     start_date: startDate.toISOString(),
     end_date: endDate.toISOString(),
-    car_id: selectedCar.id,
-    price_total: totalPrice,
+    car_id: carId,
     status: "pending",
   } as Record<string, unknown>;
 
@@ -94,78 +85,6 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
   let { error, status, statusText } = await supabase.from("bookings").insert(payload);
 
   if (error) {
-    if (isMissingColumnError(error, "price_total")) {
-      logDiagnostic("insert:without-price-total:fallback", {
-        traceId,
-        code: error.code,
-        message: error.message,
-      });
-
-      const { price_total: _priceTotal, ...payloadWithoutPriceTotal } = payload;
-      const retryResult = await supabase.from("bookings").insert(payloadWithoutPriceTotal);
-
-      if (!retryResult.error) {
-        logDiagnostic("insert:without-price-total:success", {
-          traceId,
-          status: retryResult.status,
-          statusText: retryResult.statusText,
-        });
-
-        return;
-      }
-
-      logDiagnostic("insert:without-price-total:error", {
-        traceId,
-        status: retryResult.status,
-        statusText: retryResult.statusText,
-        code: retryResult.error.code,
-        message: retryResult.error.message,
-        details: retryResult.error.details,
-        hint: retryResult.error.hint,
-      });
-
-      throw new Error(getBookingInsertErrorMessage(retryResult.error));
-    }
-
-    if (isLegacySchemaError(error)) {
-      logDiagnostic("insert:legacy-schema:fallback", {
-        traceId,
-        code: error.code,
-        message: error.message,
-      });
-
-      const legacyPayload = {
-        name: booking.name.trim(),
-        contact: booking.contact.trim(),
-        notes: booking.notes.trim() || null,
-        date: startDate.toISOString(),
-      };
-
-      const legacyResult = await supabase.from("bookings").insert(legacyPayload);
-
-      if (!legacyResult.error) {
-        logDiagnostic("insert:legacy-schema:success", {
-          traceId,
-          status: legacyResult.status,
-          statusText: legacyResult.statusText,
-        });
-
-        return;
-      }
-
-      logDiagnostic("insert:legacy-schema:error", {
-        traceId,
-        status: legacyResult.status,
-        statusText: legacyResult.statusText,
-        code: legacyResult.error.code,
-        message: legacyResult.error.message,
-        details: legacyResult.error.details,
-        hint: legacyResult.error.hint,
-      });
-
-      throw new Error(getBookingInsertErrorMessage(legacyResult.error));
-    }
-
     logDiagnostic("insert:error", {
       traceId,
       status,

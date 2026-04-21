@@ -105,7 +105,6 @@ export const BookingFlow = () => {
         selectedCar: state.selectedCar,
         startDate: normalizedRange.startDate,
         endDate: normalizedRange.endDate,
-        totalPrice,
       });
 
       const contact = state.customerDetails.contact.trim();

@@ -14,7 +14,7 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
-          car_id: string | null
+          car_id: number | null
           contact: string
           created_at: string | null
           date: string
@@ -22,13 +22,12 @@ export type Database = {
           id: string
           name: string
           notes: string | null
-          price_total: number | null
           start_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
-          car_id?: string | null
+          car_id?: number | null
           contact: string
           created_at?: string | null
           date: string
@@ -36,13 +35,12 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
-          price_total?: number | null
           start_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
-          car_id?: string | null
+          car_id?: number | null
           contact?: string
           created_at?: string | null
           date?: string
@@ -50,20 +48,11 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
-          price_total?: number | null
           start_date?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_car_id_fkey"
-            columns: ["car_id"]
-            isOneToOne: false
-            referencedRelation: "cars"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       bookings_test: {
         Row: {
