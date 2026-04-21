@@ -149,29 +149,6 @@ const AdminDashboardPage = () => {
   };
 
   const updateReservation = async (reservation: AdminBooking, patch: Partial<AdminBooking>) => {
-    if (reservation.sourceTable === "reservations") {
-      const reservationId = reservation.id.replace("reservation-", "");
-      const mirroredPatch = {
-        customer_name: patch.name,
-        customer_email: patch.contact,
-        start_date: patch.date,
-        end_date: patch.end_date,
-        car_id: patch.car_id,
-        status: patch.status,
-        notes: patch.notes,
-      };
-
-      const { error } = await supabase.from("reservations").update(mirroredPatch).eq("id", reservationId);
-      if (error) {
-        toast.error("No se pudo guardar la reserva", { description: error.message });
-        return;
-      }
-
-      toast.success("Reserva actualizada");
-      await load();
-      return;
-    }
-
     const { error } = await supabase.from("bookings").update(patch).eq("id", reservation.id);
     if (error) {
       toast.error("No se pudo guardar la reserva", { description: error.message });

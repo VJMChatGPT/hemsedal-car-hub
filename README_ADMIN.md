@@ -2,7 +2,8 @@
 
 ## 1) Migraciones
 1. Ejecuta las migraciones de Supabase (incluyendo `20260215000100_admin.sql`).
-2. Verifica que existan las tablas `cars`, `reservations` y `profiles`.
+2. Verifica que existan las tablas `bookings`, `cars` y `profiles`.
+3. Si vienes de una version anterior, aplica `20260421000100_remove_reservations_table.sql` para eliminar la tabla antigua `reservations`.
 
 ## 2) Crear usuario admin
 1. Crea un usuario con email/password desde **Supabase Auth**.

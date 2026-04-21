@@ -25,31 +25,6 @@ const isMissingColumnError = (error: SupabaseErrorShape, columnName: string) => 
   return false;
 };
 
-const saveReservationMirror = async ({ booking, selectedCar, startDate, endDate }: SaveBookingParams) => {
-  const payload = {
-    customer_name: booking.name.trim(),
-    customer_email: booking.contact.trim(),
-    customer_phone: null,
-    start_date: startDate.toISOString().slice(0, 10),
-    end_date: endDate.toISOString().slice(0, 10),
-    status: "pending",
-    notes: booking.notes.trim() || null,
-    car_code: selectedCar.id,
-  } as Record<string, unknown>;
-
-  let { error } = await supabase.from("reservations").insert(payload);
-
-  if (error && isMissingColumnError(error, "car_code")) {
-    const { car_code: _carCode, ...payloadWithoutCarCode } = payload;
-    const retryResult = await supabase.from("reservations").insert(payloadWithoutCarCode);
-    error = retryResult.error;
-  }
-
-  if (error && import.meta.env.DEV) {
-    console.warn("[booking] reservation mirror insert failed", error);
-  }
-};
-
 const createTraceId = () => `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const logDiagnostic = (event: string, details: Record<string, unknown>) => {
@@ -95,7 +70,7 @@ export const getAvailableCars = async (startDate: Date, endDate: Date) => {
     throw new Error("No se pudo consultar disponibilidad de vehículos");
   }
 
-  const unavailable = new Set((data ?? []).map((entry: { car_code?: number | null; car_id?: string | number | null }) => String(entry.car_code ?? entry.car_id ?? "")));
+  const unavailable = new Set((data ?? []).map((entry: { car_id?: string | number | null }) => String(entry.car_id ?? "")));
 
   return VEHICLES
     .filter((vehicle) => vehicle.isAvailable && !unavailable.has(String(vehicle.id)))
@@ -113,26 +88,12 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     end_date: endDate.toISOString(),
     car_id: selectedCar.id,
     price_total: totalPrice,
-    car_code: selectedCar.id,
+    status: "pending",
   } as Record<string, unknown>;
 
   logDiagnostic("insert:start", { traceId, payload });
 
   let { error, status, statusText } = await supabase.from("bookings").insert(payload);
-
-  if (error && isMissingColumnError(error, "car_code")) {
-    logDiagnostic("insert:retry-without-car_code", {
-      traceId,
-      code: error.code,
-      message: error.message,
-    });
-
-    const { car_code: _carCode, ...payloadWithoutCarCode } = payload;
-    const retryResult = await supabase.from("bookings").insert(payloadWithoutCarCode);
-    error = retryResult.error;
-    status = retryResult.status;
-    statusText = retryResult.statusText;
-  }
 
   if (error) {
     if (isLegacySchemaError(error)) {
@@ -192,6 +153,4 @@ export const saveBooking = async ({ booking, selectedCar, startDate, endDate, to
     status,
     statusText,
   });
-
-  await saveReservationMirror({ booking, selectedCar, startDate, endDate, totalPrice });
 };

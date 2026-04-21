@@ -4,7 +4,6 @@ export type ReservationStatus = "pending" | "accepted" | "rejected" | "cancelled
 
 export interface AdminBooking {
   id: string;
-  sourceTable: "bookings" | "reservations";
   car_id: string | null;
   name: string;
   contact: string;
@@ -48,8 +47,7 @@ export const fetchBookings = async () => {
 
   const bookings = (bookingsResult.data ?? []).map(
     (booking): AdminBooking => ({
-      ...(booking as Omit<AdminBooking, "sourceTable">),
-      sourceTable: "bookings",
+      ...(booking as AdminBooking),
       status: booking.status as ReservationStatus,
       end_date: booking.end_date ?? booking.start_date ?? booking.date,
       car: "car" in booking ? booking.car : null,
