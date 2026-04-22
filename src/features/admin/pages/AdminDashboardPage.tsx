@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   addDays,
@@ -55,6 +55,10 @@ const emptyCar: CarEditor = {
   active: true,
 };
 
+const CAR_IMAGE_BUCKET = "car-images";
+const CAR_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const CAR_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const toDateInput = (value: string | null) => (value ? value.slice(0, 10) : "");
 
 const calendarStatusStyles: Record<
@@ -106,6 +110,7 @@ const AdminDashboardPage = () => {
   const [selectedReservationIds, setSelectedReservationIds] = useState<string[]>([]);
   const [carEditor, setCarEditor] = useState<CarEditor | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUploadingCarImage, setIsUploadingCarImage] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -266,6 +271,52 @@ const AdminDashboardPage = () => {
 
     setCarEditor(null);
     await load();
+  };
+
+  const uploadCarImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !carEditor) return;
+
+    if (!CAR_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Formato no valido", { description: "Sube una imagen JPG, PNG o WebP." });
+      return;
+    }
+
+    if (file.size > CAR_IMAGE_MAX_SIZE) {
+      toast.error("Imagen demasiado grande", { description: "El maximo permitido es 5 MB." });
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const safeName = file.name
+      .replace(/\.[^/.]+$/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    const path = `cars/${Date.now()}-${safeName || "car"}.${extension}`;
+
+    setIsUploadingCarImage(true);
+
+    try {
+      const { error } = await supabase.storage.from(CAR_IMAGE_BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+      if (error) {
+        toast.error("No se pudo subir la imagen", { description: error.message });
+        return;
+      }
+
+      const { data } = supabase.storage.from(CAR_IMAGE_BUCKET).getPublicUrl(path);
+      setCarEditor((current) => (current ? { ...current, image_url: data.publicUrl } : current));
+      toast.success("Imagen subida");
+    } finally {
+      setIsUploadingCarImage(false);
+    }
   };
 
   const deleteReservations = async (reservationIds: string[]) => {
@@ -757,6 +808,20 @@ const AdminDashboardPage = () => {
             <div>
               <Label>URL de imagen</Label>
               <Input value={carEditor.image_url ?? ""} onChange={(event) => setCarEditor({ ...carEditor, image_url: event.target.value })} />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Subir imagen</Label>
+              <Input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={uploadCarImage}
+                disabled={isUploadingCarImage}
+              />
+              {isUploadingCarImage ? <p className="text-xs text-muted-foreground">Subiendo imagen...</p> : null}
+              {carEditor.image_url ? (
+                <img src={carEditor.image_url} alt={carEditor.name || "Imagen del coche"} className="h-32 w-full rounded-md object-cover" />
+              ) : null}
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
