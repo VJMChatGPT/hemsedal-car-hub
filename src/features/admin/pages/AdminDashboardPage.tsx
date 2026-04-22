@@ -25,16 +25,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { APP_ROUTES } from "@/constants/site";
 import { BadgeStatus } from "@/features/admin/components/BadgeStatus";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { SidePanel } from "@/features/admin/components/SidePanel";
 import { AdminBooking, AdminCar, ReservationStatus, fetchBookings, fetchCars } from "@/features/admin/lib/adminApi";
+import { SiteContentField, fetchSiteContent, mergeContentFields } from "@/features/home/content/siteContent";
 import { VEHICLES } from "@/features/home/data/vehicles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type AdminSection = "dashboard" | "reservations" | "cars" | "settings";
+type AdminSection = "dashboard" | "reservations" | "cars" | "content" | "settings";
 type CalendarView = "month" | "week" | "day";
 type ExistingCarEditor = Omit<AdminCar, "created_at">;
 type NewCarEditor = Omit<AdminCar, "id" | "code" | "created_at"> & { id: "new"; code: null };
@@ -109,13 +111,15 @@ const AdminDashboardPage = () => {
   const [selectedReservation, setSelectedReservation] = useState<AdminBooking | null>(null);
   const [selectedReservationIds, setSelectedReservationIds] = useState<string[]>([]);
   const [carEditor, setCarEditor] = useState<CarEditor | null>(null);
+  const [contentFields, setContentFields] = useState<SiteContentField[]>([]);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingCarImage, setIsUploadingCarImage] = useState(false);
+  const [isSavingContent, setIsSavingContent] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [bookingsResult, carsResult] = await Promise.allSettled([fetchBookings(), fetchCars()]);
+      const [bookingsResult, carsResult, contentResult] = await Promise.allSettled([fetchBookings(), fetchCars(), fetchSiteContent()]);
 
       if (bookingsResult.status === "fulfilled") {
         setReservations(bookingsResult.value);
@@ -130,6 +134,13 @@ const AdminDashboardPage = () => {
         console.error(carsResult.reason);
         setCars([]);
         toast.error("No se pudieron cargar los coches");
+      }
+
+      if (contentResult.status === "fulfilled") {
+        setContentFields(mergeContentFields(contentResult.value));
+      } else {
+        console.error(contentResult.reason);
+        toast.error("No se pudieron cargar los textos de la web");
       }
     } catch (error) {
       console.error(error);
@@ -273,6 +284,36 @@ const AdminDashboardPage = () => {
     await load();
   };
 
+  const updateContentField = (key: string, value: string) => {
+    setContentFields((current) => current.map((field) => (field.key === key ? { ...field, value } : field)));
+  };
+
+  const saveSiteContent = async () => {
+    setIsSavingContent(true);
+
+    const rows = contentFields.map((field) => ({
+      key: field.key,
+      section: field.section,
+      label: field.label,
+      value: field.value,
+      input_type: field.inputType,
+      sort_order: field.sortOrder,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from("site_content").upsert(rows, { onConflict: "key" });
+
+    setIsSavingContent(false);
+
+    if (error) {
+      toast.error("No se pudieron guardar los textos", { description: error.message });
+      return;
+    }
+
+    toast.success("Textos guardados");
+    await load();
+  };
+
   const uploadCarImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -354,14 +395,22 @@ const AdminDashboardPage = () => {
       <div className="grid gap-4 lg:grid-cols-[230px_1fr]">
         <aside className="rounded-2xl border bg-white p-3">
           <p className="mb-2 px-2 text-xs uppercase text-muted-foreground">Admin Panel</p>
-          {(["dashboard", "reservations", "cars", "settings"] as AdminSection[]).map((item) => (
+          {(["dashboard", "reservations", "cars", "content", "settings"] as AdminSection[]).map((item) => (
             <Button
               key={item}
               variant={section === item ? "default" : "ghost"}
               className="mb-1 w-full justify-start capitalize"
               onClick={() => setSection(item)}
             >
-              {item === "dashboard" ? "Calendario" : item === "reservations" ? "Lista de reservas" : item === "cars" ? "Coches" : "Ajustes"}
+              {item === "dashboard"
+                ? "Calendario"
+                : item === "reservations"
+                  ? "Lista de reservas"
+                  : item === "cars"
+                    ? "Coches"
+                    : item === "content"
+                      ? "Textos"
+                      : "Ajustes"}
             </Button>
           ))}
           <Button className="mt-3 w-full" variant="outline" onClick={() => load()}>
@@ -376,7 +425,15 @@ const AdminDashboardPage = () => {
           <Card>
             <CardHeader className="flex flex-wrap items-center justify-between gap-2 sm:flex-row">
               <CardTitle>
-                {section === "dashboard" ? "Calendario de reservas" : section === "reservations" ? "Reservas" : section === "cars" ? "Coches" : "Ajustes"}
+                {section === "dashboard"
+                  ? "Calendario de reservas"
+                  : section === "reservations"
+                    ? "Reservas"
+                    : section === "cars"
+                      ? "Coches"
+                      : section === "content"
+                        ? "Editor de textos"
+                        : "Ajustes"}
               </CardTitle>
 
               {(section === "dashboard" || section === "reservations") && (
@@ -662,6 +719,45 @@ const AdminDashboardPage = () => {
                           Borrar
                         </Button>
                       </ConfirmDialog>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {section === "content" && (
+            <Card>
+              <CardHeader className="flex flex-wrap items-center justify-between gap-2 sm:flex-row">
+                <div>
+                  <CardTitle>Textos de la pagina principal</CardTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">Edita los textos por bloques y guarda los cambios al final.</p>
+                </div>
+                <Button onClick={saveSiteContent} disabled={isSavingContent}>
+                  {isSavingContent ? "Guardando..." : "Guardar textos"}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {Object.entries(
+                  contentFields.reduce<Record<string, SiteContentField[]>>((groups, field) => {
+                    groups[field.section] = groups[field.section] ?? [];
+                    groups[field.section].push(field);
+                    return groups;
+                  }, {}),
+                ).map(([group, fields]) => (
+                  <div key={group} className="rounded-lg border p-4">
+                    <h3 className="mb-4 font-heading text-lg font-semibold">{group}</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {fields.map((field) => (
+                        <div key={field.key} className={field.inputType === "textarea" ? "md:col-span-2" : ""}>
+                          <Label>{field.label}</Label>
+                          {field.inputType === "textarea" ? (
+                            <Textarea value={field.value} onChange={(event) => updateContentField(field.key, event.target.value)} rows={4} />
+                          ) : (
+                            <Input value={field.value} onChange={(event) => updateContentField(field.key, event.target.value)} />
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}

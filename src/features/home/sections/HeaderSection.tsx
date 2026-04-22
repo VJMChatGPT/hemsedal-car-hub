@@ -2,17 +2,22 @@ import { Car, Menu, Phone, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SECTION_IDS, SITE_CONFIG } from "@/constants/site";
+import { SiteContentMap, getSiteText } from "@/features/home/content/siteContent";
 import { scrollToSectionById } from "@/utils/scroll";
 
-const navigationItems = [
-  { label: "Our Fleet", sectionId: SECTION_IDS.fleet },
-  { label: "About Us", sectionId: SECTION_IDS.about },
-  { label: "Reservas", sectionId: SECTION_IDS.bookings },
-  { label: "Contact", sectionId: SECTION_IDS.contact },
-] as const;
+interface HeaderSectionProps {
+  content: SiteContentMap;
+}
 
-export const HeaderSection = () => {
+export const HeaderSection = ({ content }: HeaderSectionProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navigationItems = [
+    { label: getSiteText(content, "header.nav_fleet"), sectionId: SECTION_IDS.fleet },
+    { label: getSiteText(content, "header.nav_about"), sectionId: SECTION_IDS.about },
+    { label: getSiteText(content, "header.nav_bookings"), sectionId: SECTION_IDS.bookings },
+    { label: getSiteText(content, "header.nav_contact"), sectionId: SECTION_IDS.contact },
+  ] as const;
 
   const handleNavigate = (sectionId: string) => {
     scrollToSectionById(sectionId);
@@ -44,7 +49,7 @@ export const HeaderSection = () => {
               className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
             >
               <Phone className="w-4 h-4 mr-2" />
-              Book Now
+              {getSiteText(content, "header.cta")}
             </Button>
           </div>
 
@@ -71,7 +76,7 @@ export const HeaderSection = () => {
                 className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold w-full"
               >
                 <Phone className="w-4 h-4 mr-2" />
-                Book Now
+                {getSiteText(content, "header.cta")}
               </Button>
             </div>
           </div>

@@ -1,25 +1,22 @@
-import { SECTION_IDS, SITE_NAME } from "@/constants/site";
-import { SectionTitle } from "@/features/home/components/SectionTitle";
+import { SECTION_IDS } from "@/constants/site";
+import { SiteContentMap, getSiteText } from "@/features/home/content/siteContent";
 import { COMPANY_FEATURES } from "@/features/home/data/features";
 
-export const AboutSection = () => (
+interface AboutSectionProps {
+  content: SiteContentMap;
+}
+
+export const AboutSection = ({ content }: AboutSectionProps) => (
   <section id={SECTION_IDS.about} className="py-20 bg-secondary">
     <div className="container mx-auto px-4">
       <div className="grid lg:grid-cols-2 gap-12 items-center">
         <div className="animate-slide-up">
-          <p className="text-accent font-medium uppercase tracking-wide mb-2">Why Choose Us</p>
+          <p className="text-accent font-medium uppercase tracking-wide mb-2">{getSiteText(content, "about.eyebrow")}</p>
           <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Your Trusted Partner in {SITE_NAME}
+            {getSiteText(content, "about.title")}
           </h2>
-          <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-            Since 2015, {SITE_NAME} has been serving visitors and locals with premium vehicle rental and
-            sales. Whether you're here for world-class skiing, summer hiking, or making Dal your home, we
-            have the perfect vehicle for you.
-          </p>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Our fleet is specially curated for Norwegian conditions — all vehicles are winter-ready with quality
-            tires and equipped for mountain adventures.
-          </p>
+          <p className="text-muted-foreground text-lg mb-8 leading-relaxed">{getSiteText(content, "about.paragraph_1")}</p>
+          <p className="text-muted-foreground text-lg leading-relaxed">{getSiteText(content, "about.paragraph_2")}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -32,8 +29,12 @@ export const AboutSection = () => (
               <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
                 <feature.icon className="w-6 h-6 text-accent" />
               </div>
-              <h3 className="font-heading text-lg font-semibold text-card-foreground mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+              <h3 className="font-heading text-lg font-semibold text-card-foreground mb-2">
+                {getSiteText(content, `about.feature_${index + 1}_title`)}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {getSiteText(content, `about.feature_${index + 1}_description`)}
+              </p>
             </div>
           ))}
         </div>

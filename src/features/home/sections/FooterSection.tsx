@@ -1,14 +1,18 @@
 import { Car } from "lucide-react";
 import { SECTION_IDS, SITE_CONFIG } from "@/constants/site";
+import { SiteContentMap, getSiteText } from "@/features/home/content/siteContent";
 
-const footerLinks = [
-  { label: "Our Fleet", href: `#${SECTION_IDS.fleet}` },
-  { label: "About Us", href: `#${SECTION_IDS.about}` },
-  { label: "Contact", href: `#${SECTION_IDS.contact}` },
-] as const;
+interface FooterSectionProps {
+  content: SiteContentMap;
+}
 
-export const FooterSection = () => {
+export const FooterSection = ({ content }: FooterSectionProps) => {
   const currentYear = new Date().getFullYear();
+  const footerLinks = [
+    { label: getSiteText(content, "footer.nav_fleet"), href: `#${SECTION_IDS.fleet}` },
+    { label: getSiteText(content, "footer.nav_about"), href: `#${SECTION_IDS.about}` },
+    { label: getSiteText(content, "footer.nav_contact"), href: `#${SECTION_IDS.contact}` },
+  ] as const;
 
   return (
     <footer className="bg-primary py-12">
@@ -27,7 +31,9 @@ export const FooterSection = () => {
             ))}
           </div>
 
-          <p className="text-primary-foreground/60 text-sm">© {currentYear} {SITE_CONFIG.brandName}. All rights reserved.</p>
+          <p className="text-primary-foreground/60 text-sm">
+            © {currentYear} {SITE_CONFIG.brandName}. {getSiteText(content, "footer.rights")}
+          </p>
         </div>
       </div>
     </footer>
