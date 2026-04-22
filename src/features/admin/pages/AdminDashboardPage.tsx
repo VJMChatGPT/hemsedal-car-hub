@@ -205,6 +205,8 @@ const AdminDashboardPage = () => {
     return car?.name ?? fallbackCar?.name ?? "Sin coche";
   };
 
+  const getReservationTitle = (reservation: AdminBooking) => `${reservation.name} - ${getCarName(reservation.car_id)}`;
+
   const visibleReservationIds = useMemo(() => filteredReservations.map((reservation) => reservation.id), [filteredReservations]);
   const areAllVisibleReservationsSelected =
     visibleReservationIds.length > 0 && visibleReservationIds.every((id) => selectedReservationIds.includes(id));
@@ -416,7 +418,7 @@ const AdminDashboardPage = () => {
                                   >
                                     <span className="flex min-w-0 items-center gap-1.5">
                                       <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-                                      <span className="truncate">{reservation.name}</span>
+                                      <span className="truncate">{getReservationTitle(reservation)}</span>
                                     </span>
                                   </button>
                                 );
@@ -446,7 +448,7 @@ const AdminDashboardPage = () => {
                             <p className="flex items-center gap-2 font-medium">
                               <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
                               <span className="truncate">
-                                {reservation.name} – {getCarName(reservation.car_id)}
+                                {getReservationTitle(reservation)}
                               </span>
                             </p>
                             <p className="text-sm text-muted-foreground">
@@ -515,7 +517,7 @@ const AdminDashboardPage = () => {
                         <td className="p-3">
                           {toDateInput(reservation.date)} → {toDateInput(reservation.end_date ?? reservation.date)}
                         </td>
-                        <td>{reservation.name}</td>
+                        <td className="font-medium">{getReservationTitle(reservation)}</td>
                         <td>{reservation.contact}</td>
                         <td>{getCarName(reservation.car_id)}</td>
                         <td>
